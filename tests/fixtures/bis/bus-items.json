@@ -1,0 +1,7 @@
+[
+  {"dstStationId":"406001556","govNm":"null","orgtStationId":"406000976","routeColor":"1","routeId":"405000001","routeLen":"9951","routeNm":"5000-1","routeNum":"5000","routeSubNm":"대정오일시장","routeTp":"43","stationCnt":"13","upd":"2017-08-29 21:18:42","useYn":"N"},
+  {"dstStationId":"406000977","govNm":"null","orgtStationId":"406001557","routeColor":"1","routeId":"405000002","routeLen":"10132","routeNm":"5000-2","routeNum":"5000","routeSubNm":"구억리","routeTp":"43","stationCnt":"12","upd":"2017-08-29 21:18:42","useYn":"N"},
+  {"dstStationId":"405002659","govNm":"405","orgtStationId":"405002659","routeColor":"0","routeId":"405077707","routeLen":"818","routeNm":"777-7","routeNum":"777","routeSubNm":"수요응답형(제주)","routeTp":"30","stationCnt":"1","upd":"2026-10-24 14:13:57","useYn":"Y"},
+  {"dstStationId":"405002353","govNm":"405","orgtStationId":"405002353","routeColor":"0","routeId":"405088808","routeLen":"175","routeNm":"888-8","routeNum":"888-8","routeSubNm":"차고지(가상)","routeTp":"30","stationCnt":"1","upd":"2026-10-24 14:13:57","useYn":"Y"},
+  {"dstStationId":"405000234","govNm":"405","orgtStationId":"405002677","routeColor":"3","routeId":"405090001","routeLen":"15484","routeNm":"900-1","routeNum":"900","routeSubNm":"조천리","routeTp":"30","stationCnt":"28","upd":"2026-10-24 14:13:57","useYn":"Y"}
+]

@@ -1,0 +1,13 @@
+{
+  "observedAt": "2026-10-26T16:04:14+09:00",
+  "station": "406000191",
+  "items": [
+    {"arrvVhId":"7983228","calcDate":"2026-10-26T16:03:20+09:00","leftStation":"21","predictTravTm":"25","routeId":"405320114","stationOrd":"24","updnDir":"0"},
+    {"arrvVhId":"0","calcDate":"2026-10-26T16:03:20+09:00","leftStation":"0","predictTravTm":"0","routeId":"405320118","stationOrd":"24","updnDir":"0"}
+  ],
+  "staleExampleStation": "405000153",
+  "staleExampleItems": [
+    {"arrvVhId":"0","calcDate":"2025-05-08T17:44:48+09:00","leftStation":"0","predictTravTm":"0","routeId":"405104301","stationOrd":"49","updnDir":"0"},
+    {"arrvVhId":"7983545","calcDate":"2025-05-08T17:44:48+09:00","leftStation":"17","predictTravTm":"42","routeId":"405104309","stationOrd":"47","updnDir":"0"}
+  ]
+}
