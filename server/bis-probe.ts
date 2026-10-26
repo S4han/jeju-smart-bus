@@ -4,7 +4,15 @@
 import { readServerEnv } from "./env.js";
 import { errorResponse, jsonResponse } from "./http.js";
 import { maskSecrets } from "./secrets.js";
-import { distinctValues, extractItems, fieldNames, firstTag, numericRange } from "./xml-summary.js";
+import {
+  coordinateQuality,
+  distinctValues,
+  extractItems,
+  fieldNames,
+  firstTag,
+  numericRange,
+  stringRange,
+} from "./xml-summary.js";
 
 const BASE_URL = "http://busopen.jeju.go.kr/OpenAPI/service/bis/";
 const TIMEOUT_MS = 15_000;
@@ -23,6 +31,7 @@ const PARAM_VALUE = /^[A-Za-z0-9 :_-]{0,32}$/;
 
 const NUMERIC_FIELDS = ["localX", "localY", "stationOrd", "predictTravTm", "leftStation", "routeDist"];
 const CATEGORY_FIELDS = ["updnDir", "useYn", "dirTp", "routeTp", "govNm", "holidayTp"];
+const DATE_FIELDS = ["calcDate", "upd"];
 
 type KeyMode = "none" | "raw" | "encoded";
 
@@ -45,6 +54,8 @@ export async function handleBisProbe(request: Request): Promise<Response> {
     return errorResponse(400, { status: "invalid_input", code: "invalid_key_mode" });
   }
   const sampleSize = Math.min(Math.max(Number(params.get("sample") ?? 3) || 0, 0), 5);
+  // 샘플만 사용 중(useYn=Y) 항목으로 좁힐 때 사용. 통계는 전체 기준
+  const sampleInUse = params.get("sampleInUse") === "1";
 
   const upstreamQuery: string[] = [];
   for (const name of [...allowed, ...PAGING]) {
@@ -104,7 +115,11 @@ export async function handleBisProbe(request: Request): Promise<Response> {
       categories: Object.fromEntries(
         CATEGORY_FIELDS.filter((f) => records.some((r) => f in r)).map((f) => [f, distinctValues(records, f)]),
       ),
-      sample: records.slice(0, sampleSize),
+      dates: Object.fromEntries(
+        DATE_FIELDS.filter((f) => records.some((r) => f in r)).map((f) => [f, stringRange(records, f)]),
+      ),
+      coordinates: records.some((r) => "localX" in r) ? coordinateQuality(records, "stationId") : undefined,
+      sample: (sampleInUse ? records.filter((r) => r.useYn === "Y") : records).slice(0, sampleSize),
     },
   });
 }

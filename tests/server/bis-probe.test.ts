@@ -67,3 +67,19 @@ describe("xml-summary", () => {
     expect(numericRange(records, "localY")).toMatchObject({ present: 2, zero: 1, min: 0, max: 33.450058 });
   });
 });
+
+describe("coordinateQuality", () => {
+  it("뒤바뀐 좌표·범위 밖·누락을 구분한다", async () => {
+    const { coordinateQuality } = await import("../../server/xml-summary");
+    const q = coordinateQuality(
+      [
+        { stationId: "a", localX: "126.5", localY: "33.5" },
+        { stationId: "b", localX: "33.5", localY: "126.5" },
+        { stationId: "c", localX: "127.5", localY: "37.5" },
+        { stationId: "d", localX: "", localY: "33.5" },
+      ],
+      "stationId",
+    );
+    expect(q).toMatchObject({ valid: 1, swapped: 1, outOfRange: 1, missing: 1, swappedExamples: ["b"], outOfRangeExamples: ["c"] });
+  });
+});

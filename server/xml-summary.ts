@@ -76,3 +76,52 @@ export function distinctValues(records: XmlRecord[], field: string, limit = 20):
 export function fieldNames(records: XmlRecord[]): string[] {
   return [...new Set(records.flatMap((r) => Object.keys(r)))].sort();
 }
+
+// 문자열 날짜 필드의 최솟값·최댓값(같은 형식끼리 사전순 비교) — 데이터 신선도 확인용
+export function stringRange(records: XmlRecord[], field: string): { min: string | null; max: string | null; empty: number } {
+  let min: string | null = null;
+  let max: string | null = null;
+  let empty = 0;
+  for (const r of records) {
+    const v = r[field];
+    if (!v || v === "null") {
+      empty++;
+      continue;
+    }
+    if (min === null || v < min) min = v;
+    if (max === null || v > max) max = v;
+  }
+  return { min, max, empty };
+}
+
+// 제주 범위 기준 좌표 품질: 정상 / 경도·위도 뒤바뀜 / 범위 밖 / 누락
+const JEJU_LNG = [126.0, 127.1];
+const JEJU_LAT = [33.0, 33.7];
+const within = (v: number, [lo, hi]: number[]) => v >= lo && v <= hi;
+
+export interface CoordinateQuality {
+  valid: number;
+  swapped: number;
+  outOfRange: number;
+  missing: number;
+  swappedExamples: string[];
+  outOfRangeExamples: string[];
+}
+
+export function coordinateQuality(records: XmlRecord[], idField: string): CoordinateQuality {
+  const q: CoordinateQuality = { valid: 0, swapped: 0, outOfRange: 0, missing: 0, swappedExamples: [], outOfRangeExamples: [] };
+  for (const r of records) {
+    const x = Number(r.localX);
+    const y = Number(r.localY);
+    if (!r.localX || !r.localY || !Number.isFinite(x) || !Number.isFinite(y)) q.missing++;
+    else if (within(x, JEJU_LNG) && within(y, JEJU_LAT)) q.valid++;
+    else if (within(y, JEJU_LNG) && within(x, JEJU_LAT)) {
+      q.swapped++;
+      if (q.swappedExamples.length < 5) q.swappedExamples.push(r[idField]);
+    } else {
+      q.outOfRange++;
+      if (q.outOfRangeExamples.length < 5) q.outOfRangeExamples.push(r[idField]);
+    }
+  }
+  return q;
+}
