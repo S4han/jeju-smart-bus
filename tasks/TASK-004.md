@@ -48,6 +48,21 @@
 
 검증: `npm run build` 성공(클라이언트 번들 해시 변경 없음 `index-Dr_tebda.js`), `npm test` 21개 통과. 음성 확인 — 서버 코드 타입 오류 시 `tsc -b` 실패, `dist`에 변수 이름 삽입 시 번들 점검 실패(exit 1), 서버 코드에 `console.log` 추가 시 가드 테스트 실패.
 
+### 배포 환경 확인 (2026-10-26, 사용자 승인으로 Vercel 임시 공유 링크 사용 — 23시간 후 만료)
+
+미리보기 배포 `dpl_Ged14gMAnjZGGHKHPGW3NbWgRjKw`(커밋 `b794b9b`, 키 미설정):
+
+| 요청 | 결과 |
+|---|---|
+| `GET /api/arrivals?stopId=405001` | 503 `{"status":"unavailable","code":"not_configured"}`, `cache-control: no-store` — 함수 실행·ESM `.js` import 정상 |
+| `GET /api/arrivals?stopId=405001&lat=…` | 400 `{"status":"invalid_input","code":"location_not_accepted"}`, 좌표 값 미반영 |
+| `GET /api/arrivals?stopId=../etc` | 400 `{"status":"invalid_input","code":"invalid_stop_id"}` |
+| `GET /` | 200, 기존 PoC 페이지 그대로 제공 |
+| POST(405) | 확인 도구가 GET만 지원 → 단위 테스트로만 확인 |
+| 런타임 로그(Vercel API 조회) | 이 배포의 함수 로그 0건 — 서버 코드가 로그를 출력하지 않음과 일치. 대시보드 요청 목록에 쿼리스트링이 표시되는지는 미확인(TASK-020 재검증) |
+
+관찰: 미리보기 배포 HTML에 Vercel Toolbar 스크립트(`vercel.live/_next-live/feedback/feedback.js`, `data-explicit-opt-in`)가 주입됨. 미리보기 전용 기능으로 보이며 운영 배포 적용 여부는 TASK-020에서 확인.
+
 ## 수용 기준
 - `dist/` 번들 검색 결과 서버 키 값·서버 전용 변수가 없다.
 - 서버 함수 코드에 `console.log`로 요청 본문·외부 응답 원문·키를 출력하는 부분이 없다.
