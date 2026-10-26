@@ -34,6 +34,8 @@ api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts(BusArri
 server/               # 서버 전용 로직(좌표 거부, 응답 형식, 마스킹, env) — src에서 import 금지
 shared/               # 브라우저·서버 공용 순수 코드: 도메인 타입(domain.ts), BIS 변환·스냅샷 가공(bis-convert.ts), 데이터 소스 계약(sources.ts)
 src/origin/           # 출발지(TASK-011): 현재 위치 요청·정류장명 검색·지도 지정. 좌표는 메모리 상태만(저장소·URL·네트워크 금지, repo-guard 검사)
+src/destination/      # 목적지(TASK-015) — 장소 선택 UI는 src/origin/PlacePicker.tsx 공용
+src/route/            # 경로: 탐색 시작 조건(candidates.ts — 출발지·목적지 후보, 위치별 확대 동의)
 src/stops/            # 주변 정류장(TASK-012): 500m → 동의 시 1km, 거리 계산은 shared/geo.ts(D-03)
                       # 지도·목록 동기화(TASK-013): 결과 상태 1개(useNearbyStops)를 지도 항목(mapItems)과 목록이 공유
 src/arrivals/         # 도착정보 화면(TASK-014): 판정은 shared/arrivals.ts — 스냅샷 노선으로 정류장 일치, 화면 시점 나이 ≤120초만 실시간

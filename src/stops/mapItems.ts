@@ -6,14 +6,17 @@ import type { MapItem } from "../map/markers";
 import type { NearbyState } from "./nearby";
 
 export const ORIGIN_ITEM_ID = "origin";
+export const DESTINATION_ITEM_ID = "destination";
 
 export function nearbyStopsOf(state: NearbyState | null) {
   return state?.phase === "results" ? state.stops : [];
 }
 
-export function nearbyMapItems(state: NearbyState | null, origin: Coordinates): MapItem[] {
+// 출발지·목적지 지점과 출발지 주변 정류장(목록과 같은 집합). 목적지 후보 정류장은 지도에 따로 그리지 않는다
+export function nearbyMapItems(state: NearbyState | null, origin: Coordinates | null, destination: Coordinates | null = null): MapItem[] {
   return [
-    { id: ORIGIN_ITEM_ID, title: "출발지", coordinates: origin, kind: "origin" },
+    ...(origin ? [{ id: ORIGIN_ITEM_ID, title: "출발지", coordinates: origin, kind: "origin" } satisfies MapItem] : []),
+    ...(destination ? [{ id: DESTINATION_ITEM_ID, title: "목적지", coordinates: destination, kind: "destination" } satisfies MapItem] : []),
     ...nearbyStopsOf(state).map(({ stop }): MapItem => ({ id: stop.id, title: stop.name, coordinates: stop.coordinates, kind: "stop" })),
   ];
 }

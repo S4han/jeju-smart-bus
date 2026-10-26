@@ -18,6 +18,9 @@ import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
 import { boundsOf, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
 import { useNearbyStops } from "./stops/useNearbyStops";
+import { DestinationPanel } from "./destination/DestinationPanel";
+import { routeReadiness, type EndpointKey } from "./route/candidates";
+import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
 
 // 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
 const JEJU = { lat: 33.4996, lng: 126.5312 };
@@ -36,26 +39,50 @@ export default function App() {
 
   // 출발지 좌표는 이 메모리 상태로만 둔다 — URL·저장소·서버로 보내지 않는다(TASK-011, PRIV-001~003)
   const [origin, setOrigin] = useState<Origin | null>(null);
-  const [picking, setPicking] = useState(false);
+  const [destination, setDestination] = useState<Origin | null>(null);
+  // 지도 직접 지정 대상(출발지·목적지 중 하나만)
+  const [pickTarget, setPickTarget] = useState<EndpointKey | null>(null);
   const location = useCurrentLocation();
   const stopList = useStopNames(SNAPSHOT_SOURCE);
   const mapPickAvailable = granted && status === "ready";
 
-  const handleMapClick = useCallback((coordinates: Coordinates) => {
-    setOrigin(originFromMapPoint(coordinates));
-    setPicking(false);
-  }, []);
+  const handleMapClick = useCallback(
+    (coordinates: Coordinates) => {
+      if (pickTarget === "origin") setOrigin(originFromMapPoint(coordinates));
+      if (pickTarget === "destination") setDestination(originFromMapPoint(coordinates));
+      setPickTarget(null);
+    },
+    [pickTarget],
+  );
 
   // 지도와 목록은 같은 결과 상태를 쓴다(TASK-013, AC-004)
-  const nearby = useNearbyStops(stopList.status === "ready" ? stopList.stops : null, origin?.coordinates ?? null);
+  const stops = stopList.status === "ready" ? stopList.stops : null;
+  const nearby = useNearbyStops(stops, origin?.coordinates ?? null);
+  // 목적지 후보 정류장 — 출발지와 따로 찾고 확대 동의도 따로 받는다(TASK-015, AC-007)
+  const destinationNearby = useNearbyStops(stops, destination?.coordinates ?? null);
+  const readiness = useMemo(
+    () => routeReadiness({ origin: nearby.state, destination: destinationNearby.state }),
+    [nearby.state, destinationNearby.state],
+  );
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   useEffect(() => setSelectedStopId(null), [nearby.state]);
 
-  // 출발지 전에는 PoC 화면 그대로(제주시 마커), 출발지가 정해지면 출발지·주변 정류장만
-  const items = useMemo(() => (origin ? nearbyMapItems(nearby.state, origin.coordinates) : POC_ITEMS), [origin, nearby.state]);
+  // 출발지·목적지 전에는 PoC 화면 그대로(제주시 마커), 정해지면 출발지·목적지·출발지 주변 정류장만
+  const hasPlace = origin !== null || destination !== null;
+  const items = useMemo(
+    () => (hasPlace ? nearbyMapItems(nearby.state, origin?.coordinates ?? null, destination?.coordinates ?? null) : POC_ITEMS),
+    [hasPlace, nearby.state, origin, destination],
+  );
   const fitBounds = useMemo(
-    () => (origin ? boundsOf([origin.coordinates, ...nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)]) : null),
-    [origin, nearby.state],
+    () =>
+      hasPlace
+        ? boundsOf([
+            ...(origin ? [origin.coordinates] : []),
+            ...(destination ? [destination.coordinates] : []),
+            ...nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates),
+          ])
+        : null,
+    [hasPlace, origin, destination, nearby.state],
   );
   const selectedStop = useMemo(
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
@@ -88,7 +115,7 @@ export default function App() {
             selectedId={selectedStopId}
             onSelect={handleMarkerSelect}
             fitBounds={fitBounds}
-            onMapClick={picking ? handleMapClick : undefined}
+            onMapClick={pickTarget ? handleMapClick : undefined}
             ariaLabel="제주 지도"
           />
           <p aria-live="polite">{STATUS_MESSAGES[status]}</p>
@@ -106,8 +133,8 @@ export default function App() {
         onRequestLocation={location.request}
         stopList={stopList}
         mapPickAvailable={mapPickAvailable}
-        picking={picking && mapPickAvailable}
-        onPickingChange={setPicking}
+        picking={pickTarget === "origin" && mapPickAvailable}
+        onPickingChange={(on) => setPickTarget(on ? "origin" : null)}
       />
       {nearby.state && (
         <NearbyStops
@@ -121,6 +148,23 @@ export default function App() {
       {selectedStop && (
         <ArrivalPanel stop={selectedStop} state={arrivals.state} routesById={routesById} onRefresh={arrivals.refresh} />
       )}
+      <DestinationPanel
+        destination={destination}
+        onChange={setDestination}
+        stopList={stopList}
+        mapPickAvailable={mapPickAvailable}
+        picking={pickTarget === "destination" && mapPickAvailable}
+        onPickingChange={(on) => setPickTarget(on ? "destination" : null)}
+      />
+      {destinationNearby.state && (
+        <NearbyStops
+          state={destinationNearby.state}
+          onExpand={destinationNearby.expand}
+          onDecline={destinationNearby.decline}
+          placeLabel="목적지"
+        />
+      )}
+      <RouteReadinessNotice readiness={readiness} />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>
   );

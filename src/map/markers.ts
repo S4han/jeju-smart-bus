@@ -3,8 +3,8 @@
 
 import type { Coordinates } from "../../shared/domain";
 
-// kind가 없으면 SDK 기본 마커(PoC 그대로), origin·stop은 서로 구분되는 모양으로 그린다(TASK-013)
-export type MapItemKind = "origin" | "stop";
+// kind가 없으면 SDK 기본 마커(PoC 그대로), origin·destination·stop은 서로 구분되는 모양으로 그린다(TASK-013·015)
+export type MapItemKind = "origin" | "destination" | "stop";
 
 export interface MapItem {
   id: string;
@@ -27,6 +27,7 @@ export function toMarkerInputs(items: ReadonlyArray<MapItem>): MarkerInput[] {
 // 마커 모양(HTML). 이름은 화면 낭독용 title로도 제공한다
 export function markerHtml(input: MarkerInput, selected: boolean): string | null {
   if (input.kind === "origin") return '<div class="map-marker map-marker-origin" aria-hidden="true">출발</div>';
+  if (input.kind === "destination") return '<div class="map-marker map-marker-destination" aria-hidden="true">도착</div>';
   if (input.kind === "stop") return `<div class="map-marker map-marker-stop${selected ? " is-selected" : ""}" aria-hidden="true"></div>`;
   return null;
 }
