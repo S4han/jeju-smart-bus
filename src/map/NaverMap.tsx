@@ -12,10 +12,12 @@ interface NaverMapProps {
   items: ReadonlyArray<MapItem>;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  // 지도를 누른 지점(TASK-011 지도 직접 지정). 좌표는 부모 메모리 상태로만 전달한다
+  onMapClick?: (coordinates: Coordinates) => void;
   ariaLabel: string;
 }
 
-export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, ariaLabel }: NaverMapProps) {
+export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, ariaLabel }: NaverMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
 
@@ -44,6 +46,15 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
       }
     };
   }, [maps, items, selectedId, onSelect]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!maps || !map || !onMapClick) return;
+    const listener = maps.Event.addListener(map, "click", (e: naver.maps.PointerEvent) =>
+      onMapClick({ lat: e.coord.y, lng: e.coord.x }),
+    );
+    return () => maps.Event.removeListener(listener);
+  }, [maps, onMapClick]);
 
   return <div id="map" ref={container} role="region" aria-label={ariaLabel} />;
 }
