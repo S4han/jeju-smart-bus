@@ -55,7 +55,7 @@
 |---|---|
 | 의존성 설치 | `npm install` |
 | 개발 서버 | `npm run dev` |
-| 빌드(타입 검사 포함) | `npm run build` |
+| 빌드(타입 검사·번들 비밀정보 점검 포함) | `npm run build` |
 | 빌드 미리보기 | `npm run preview` |
 | 테스트 | `npm test` (Vitest) |
 

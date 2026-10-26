@@ -33,4 +33,19 @@ describe("repo guard", () => {
       expect(value).toMatch(/^(your_[a-z0-9_]+_here)?$/);
     }
   });
+
+  // TASK-004: 서버 코드는 클라이언트 변수·로그 출력을 쓰지 않는다(AGENTS.md 규칙 6·7).
+  it("api·server는 VITE_ 변수와 console 출력을 쓰지 않는다", () => {
+    const offenders = [...listFiles("api"), ...listFiles("server")].filter((file) =>
+      /\bVITE_[A-Z0-9_]+|\bconsole\s*\./.test(readFileSync(file, "utf8")),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("src는 server 코드를 가져오지 않는다(서버 코드의 번들 포함 방지)", () => {
+    const offenders = listFiles("src").filter((file) =>
+      /from\s+["'][^"']*\bserver\//.test(readFileSync(file, "utf8")),
+    );
+    expect(offenders).toEqual([]);
+  });
 });

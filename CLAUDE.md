@@ -16,7 +16,8 @@
 - React 19 + TypeScript 5.7 + Vite 6, `src/` 단일 컴포넌트 PoC
 - 지도: NAVER Dynamic Map JS SDK v3 (`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=...`)
 - 배포: Vercel (Git 연동, `vercel.json` 없음)
-- 테스트: Vitest (`npm test`, `tests/`). 린트·서버 함수: 아직 없음 (서버 함수는 TASK-004)
+- 테스트: Vitest (`npm test`, `tests/`). 린트: 없음
+- 서버 함수: Vercel Functions. 진입점은 `api/`(파일마다 함수 1개가 생기므로 최소화), 로직은 `server/`. 의존성 없이 Web 표준 `fetch` 핸들러 사용. 상대 import는 `.js` 확장자로 작성(ESM 런타임)
 - Node: `engines.node` `24.x` (Vercel 프로젝트 설정과 동일)
 
 ## 현재 코드 구조
@@ -27,7 +28,10 @@ src/main.tsx          # StrictMode로 <App/> 렌더
 src/App.tsx           # NAVER 지도 SDK 동적 로드 → 제주시 중심 지도 + 마커 (PoC)
 src/style.css         # 기본 스타일, #map 높이 min(70vh,650px)
 src/vite-env.d.ts     # Vite 타입 참조
-.env.example          # VITE_NAVER_MAP_CLIENT_ID 자리표시자
+api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts
+server/               # 서버 전용 로직(좌표 거부, 응답 형식, 마스킹, env) — src에서 import 금지
+scripts/check-bundle-secrets.mjs  # build 마지막 단계: dist에 서버 비밀정보 있으면 실패
+.env.example          # VITE_NAVER_MAP_CLIENT_ID, JEJU_BUS_API_KEY(서버 전용) 자리표시자
 ```
 
 ## 작업 시 주의

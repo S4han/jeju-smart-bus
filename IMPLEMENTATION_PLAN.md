@@ -332,7 +332,8 @@
 | TASK-001 | 완료(자동 검증분). 지도 표시 3항목 사용자 확인 대기 |
 | TASK-002 | **설계 검증 완료** — PRIV-001·002·003 통과(설계, Hobby 전제), PRIV-004 부분 보류. 위치정보법 조문 정리(§8). `docs/verification/PRIV-001-004.md` |
 | TASK-003 | **1차 조사 완료, 판정 미완료** — `docs/verification/GATE-06.md` §4 사용자 확인 대기 |
-| TASK-004~007 | 미착수 |
+| TASK-004 | **B안 골격 완료** — 확인자료 기록 장치는 D-12 L-1·L-4 후 |
+| TASK-005~007 | 미착수 |
 | TASK-008 | **비교 완료(A안 + NAVER 검색 API 보강), 사용자 선정 대기** — `docs/verification/U-001-place-search.md` |
 | TASK-009~020 | 미착수 |
 
