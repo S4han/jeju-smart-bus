@@ -40,7 +40,7 @@
 | `server/request-guard.ts` | 좌표성 파라미터 목록(대소문자 무시), 정류장 ID 파서 |
 | `server/http.ts` | 공통 응답 형식 `{status, code}`, 기본 `Cache-Control: no-store` |
 | `server/secrets.ts` | 비밀값(원문·URL 인코딩) 및 `serviceKey`·`apiKey` 등 파라미터 마스킹 |
-| `server/env.ts` | 서버 전용 `JEJU_BUS_API_KEY` 읽기 |
+| `server/env.ts` | 서버 환경변수 읽기. D-25(2026-10-26) 이후 버스 API 키는 사용하지 않음 — `VERCEL_ENV`만 읽음 |
 | `tsconfig.server.json` | `api`·`server` 타입 검사를 `tsc -b`에 포함 |
 | `scripts/check-bundle-secrets.mjs` | `npm run build` 마지막 단계에서 `dist/`에 서버 변수 이름·값이 있으면 빌드 실패 |
 | `tests/repo-guard.test.ts` | `api`·`server`에 `VITE_`·`console.` 사용 금지, `src`가 `server/`를 import 금지 |

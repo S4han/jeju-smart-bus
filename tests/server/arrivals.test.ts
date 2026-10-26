@@ -1,32 +1,17 @@
 // 도착정보 프록시 골격 (TASK-004, PRIV-001·002, D-22, NFR-003·004)
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import handler from "../../api/arrivals";
-
-const FAKE_KEY = "test-key-should-never-appear";
 
 function get(query: string): Promise<Response> {
   return handler.fetch(new Request(`https://example.test/api/arrivals${query}`));
 }
 
-afterEach(() => {
-  delete process.env.JEJU_BUS_API_KEY;
-});
-
 describe("GET /api/arrivals", () => {
-  it("키가 없으면 not_configured로 응답하고 데이터를 만들지 않는다", async () => {
+  it("상류 호출 구현 전이므로 upstream_not_implemented이며 데이터를 만들지 않는다", async () => {
     const res = await get("?stopId=405001");
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ status: "unavailable", code: "not_configured" });
+    expect(await res.json()).toEqual({ status: "unavailable", code: "upstream_not_implemented" });
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-  });
-
-  it("키가 있어도 상류 호출 전이므로 upstream_not_implemented이며 키를 노출하지 않는다", async () => {
-    process.env.JEJU_BUS_API_KEY = FAKE_KEY;
-    const res = await get("?stopId=405001");
-    const text = await res.text();
-    expect(res.status).toBe(503);
-    expect(JSON.parse(text)).toEqual({ status: "unavailable", code: "upstream_not_implemented" });
-    expect(text).not.toContain(FAKE_KEY);
   });
 
   it.each(["lat", "LNG", "longitude", "x", "coords", "mapy"])("좌표성 파라미터 %s는 거부하고 값을 되돌려주지 않는다", async (name) => {

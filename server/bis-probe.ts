@@ -1,5 +1,5 @@
 // 제주 BIS 실응답 검증용 임시 프로브 (TASK-005, GATE-01·04, U-006) — TASK-005 종료 후 삭제
-// 미리보기 배포에서만 동작한다. 응답 원문 대신 요약만 돌려주고, 키는 마스킹하며, 로그를 남기지 않는다.
+// 미리보기 배포에서만 동작한다. 응답 원문 대신 요약만 돌려주고, 로그를 남기지 않는다. 키는 보내지 않는다(D-25).
 
 import { readServerEnv } from "./env.js";
 import { errorResponse, jsonResponse } from "./http.js";
@@ -33,8 +33,6 @@ const NUMERIC_FIELDS = ["localX", "localY", "stationOrd", "predictTravTm", "left
 const CATEGORY_FIELDS = ["updnDir", "useYn", "dirTp", "routeTp", "govNm", "holidayTp"];
 const DATE_FIELDS = ["calcDate", "upd"];
 
-type KeyMode = "none" | "raw" | "encoded";
-
 export async function handleBisProbe(request: Request): Promise<Response> {
   const env = readServerEnv();
   if (env.vercelEnv !== "preview") {
@@ -49,10 +47,6 @@ export async function handleBisProbe(request: Request): Promise<Response> {
   const allowed = OPERATIONS[op];
   if (!allowed) return errorResponse(400, { status: "invalid_input", code: "operation_not_allowed" });
 
-  const keyMode = (params.get("key") ?? "raw") as KeyMode;
-  if (!["none", "raw", "encoded"].includes(keyMode)) {
-    return errorResponse(400, { status: "invalid_input", code: "invalid_key_mode" });
-  }
   const sampleSize = Math.min(Math.max(Number(params.get("sample") ?? 3) || 0, 0), 5);
   // 샘플만 사용 중(useYn=Y) 항목으로 좁힐 때 사용. 통계는 전체 기준
   const sampleInUse = params.get("sampleInUse") === "1";
@@ -65,12 +59,6 @@ export async function handleBisProbe(request: Request): Promise<Response> {
     upstreamQuery.push(`${name}=${encodeURIComponent(value)}`);
   }
 
-  const key = env.jejuBusApiKey;
-  if (keyMode !== "none") {
-    if (!key) return errorResponse(503, { status: "unavailable", code: "not_configured" });
-    upstreamQuery.push(`serviceKey=${keyMode === "raw" ? key : encodeURIComponent(key)}`);
-  }
-
   const url = `${BASE_URL}${op}${upstreamQuery.length ? `?${upstreamQuery.join("&")}` : ""}`;
   const started = Date.now();
   let res: Response;
@@ -78,21 +66,20 @@ export async function handleBisProbe(request: Request): Promise<Response> {
     res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (error) {
     const reason = error instanceof Error ? `${error.name}: ${error.message}` : "unknown";
-    return jsonResponse(502, { status: "unavailable", code: "upstream_unreachable", reason: maskSecrets(reason, [key]) });
+    return jsonResponse(502, { status: "unavailable", code: "upstream_unreachable", reason: maskSecrets(reason, []) });
   }
   const body = await res.text();
   const { itemTag, records } = extractItems(body);
 
   return jsonResponse(200, {
     op,
-    keyMode,
-    request: maskSecrets(url, [key]),
+    request: maskSecrets(url, []),
     upstream: {
       httpStatus: res.status,
       contentType: res.headers.get("content-type"),
       bytes: body.length,
       durationMs: Date.now() - started,
-      head: maskSecrets(body.slice(0, 400), [key]),
+      head: maskSecrets(body.slice(0, 400), []),
     },
     header: {
       resultCode: firstTag(body, "resultCode") ?? null,

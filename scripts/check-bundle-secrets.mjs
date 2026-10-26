@@ -3,6 +3,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
+// D-25로 버스 API 키는 쓰지 않지만, 다시 도입될 경우를 대비해 점검 대상으로 유지한다.
 const SERVER_ENV_NAMES = ["JEJU_BUS_API_KEY"];
 
 function listFiles(dir) {

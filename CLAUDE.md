@@ -31,7 +31,7 @@ src/vite-env.d.ts     # Vite 타입 참조
 api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts
 server/               # 서버 전용 로직(좌표 거부, 응답 형식, 마스킹, env) — src에서 import 금지
 scripts/check-bundle-secrets.mjs  # build 마지막 단계: dist에 서버 비밀정보 있으면 실패
-.env.example          # VITE_NAVER_MAP_CLIENT_ID, JEJU_BUS_API_KEY(서버 전용) 자리표시자
+.env.example          # VITE_NAVER_MAP_CLIENT_ID 자리표시자 (버스 API는 키 없이 호출 — D-25)
 ```
 
 ## 작업 시 주의
