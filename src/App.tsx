@@ -21,6 +21,7 @@ import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
 import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
+import { useRouteSearch } from "./route/useRouteSearch";
 
 // 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
 const JEJU = { lat: 33.4996, lng: 126.5312 };
@@ -64,6 +65,7 @@ export default function App() {
     () => routeReadiness({ origin: nearby.state, destination: destinationNearby.state }),
     [nearby.state, destinationNearby.state],
   );
+  const routeSearch = useRouteSearch(stops, stopList.status === "ready" ? stopList.routes : null, readiness);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   useEffect(() => setSelectedStopId(null), [nearby.state]);
 
@@ -164,7 +166,12 @@ export default function App() {
           placeLabel="목적지"
         />
       )}
-      <RouteReadinessNotice readiness={readiness} />
+      <RouteReadinessNotice
+        readiness={readiness}
+        canSearch={routeSearch.canSearch}
+        onSearch={routeSearch.search}
+        result={routeSearch.result}
+      />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>
   );
