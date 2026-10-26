@@ -167,7 +167,7 @@ export function buildSnapshot(
     snapshot: {
       schemaVersion: 1,
       generatedAt,
-      sourceUpdatedAt: updates.at(-1) ?? null,
+      sourceUpdatedAt: updates.length > 0 ? updates[updates.length - 1] : null,
       stops,
       routes,
     },

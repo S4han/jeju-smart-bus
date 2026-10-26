@@ -44,7 +44,6 @@ src/arrivals/         # 도착정보 화면(TASK-014): 판정은 shared/arrivals
 src/service/           # 장애 영향 안내(TASK-019): 기능별 의존성 지도(impact.ts), 상단 안내(ServiceNotices)
 src/data/             # 정적 스냅샷 로드(httpSnapshotSource — 고정 경로 1개 요청·형식 검사), 데이터 출처 표시
 server/snapshot-build.ts + vite.config.ts  # Vercel 빌드(VERCEL=1) 때 BIS 3회 호출 → dist/data/transit-snapshot.v1.json. 로컬 빌드는 생략
-api/bis-probe.ts      # 임시 BIS 검증 함수(미리보기 전용) — 검증 TASK 종료 후 삭제
 scripts/check-bundle-secrets.mjs  # build 마지막 단계: dist에 서버 비밀정보 있으면 실패
 .env.example          # VITE_NAVER_MAP_CLIENT_ID 자리표시자 (버스 API는 키 없이 호출 — D-25)
 ```

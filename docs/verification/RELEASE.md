@@ -17,7 +17,7 @@
 | 5 | 모바일 실기기 점검(iOS Safari, Android Chrome) — §4 체크리스트 | 사용자 | TASK-020 작업 항목 4 |
 | 6 | 운영 배포(main 병합) 후 실제 NAVER 지도 표시·마커·지도 맞춤 확인(TASK-001 회귀 3~5번) | 사용자 | 미리보기는 SSO 보호·가짜 SDK로만 확인 |
 | 7 | 결정 대기: D-06(도보 근거 — 현재 직선거리 임시), D-14(KPI 목표 — §3 제안), D-28(스냅샷 갱신 주기) | 사용자 | IMPLEMENTATION_PLAN.md §8 |
-| 8 | 정리: 임시 검증 함수 `api/bis-probe` 삭제 여부(TASK-007에 재사용 가능), Vercel 미사용 환경변수 `JEJU_BUS_API_KEY` 삭제 | 사용자 | D-25 |
+| 8 | 정리: ~~임시 검증 함수 `api/bis-probe`~~ **삭제 완료(2026-10-26)**, Vercel 미사용 환경변수 `JEJU_BUS_API_KEY` 삭제 | 사용자 | D-25 |
 
 ## 1. AC 회귀표 (`npm test` 202개 전부 통과, 2026-10-26)
 
