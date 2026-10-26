@@ -12,7 +12,7 @@
 
 ## 선행 조건
 - [ ] TASK-002 PRIV-001~003 통과(또는 조건부 통과 조건 반영)
-- [ ] TASK-003에서 Vercel·버스 API 사용 가능 판정
+- [x] TASK-003 Vercel 사용 가능 판정(2026-10-26: Hobby·비상업). 버스 API는 공공데이터포털 과금 구조 없음 — LINK 연계처 조건은 TASK-005에서 확인(골격 단계는 실호출 없음)
 - [x] D-02 승인(2026-10-26): Vercel Functions(`api/`)
 - [x] D-17 승인(2026-10-26): NAVER 지도 Client ID 외 모든 키는 서버 전용
 - [x] D-22 승인(2026-10-26): `GET /api/arrivals?stopId=…` 허용, 좌표 필드는 거부
