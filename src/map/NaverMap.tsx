@@ -18,6 +18,8 @@ interface NaverMapProps {
   fitBounds?: { sw: Coordinates; ne: Coordinates } | null;
   // 지도 위에 떠 있는 요소(출발·도착 카드 등)를 피해 맞출 여백(px). TASK-022
   fitPadding?: { top: number; right: number; bottom: number; left: number };
+  // 선택한 정류장 등 보여 줘야 할 지점. 화면(여백 안) 밖에 있을 때만 지도를 옮긴다(TASK-025)
+  focus?: Coordinates | null;
   ariaLabel: string;
 }
 
@@ -26,7 +28,7 @@ export const LABEL_MIN_ZOOM = 15;
 
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 
-export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, ariaLabel }: NaverMapProps) {
+export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, focus = null, ariaLabel }: NaverMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
 
@@ -72,6 +74,19 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
       });
     }
   }, [maps, fitBounds, fitPadding]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!maps || !map || !focus) return;
+    const point = new maps.LatLng(focus.lat, focus.lng);
+    if (typeof map.panToBounds === "function") {
+      // 확대 수준은 그대로, 지점이 여백 안쪽에 보이도록 필요한 만큼만 이동
+      map.panToBounds(new maps.LatLngBounds(point, point), {}, fitPadding);
+    } else {
+      map.panTo(point);
+    }
+    // 선택이 바뀔 때만 옮긴다(여백 변경만으로는 옮기지 않음)
+  }, [maps, focus?.lat, focus?.lng]);
 
   // 확대 수준에 따라 정류장 이름 표시/숨김(지도 영역 class만 바꾼다)
   useEffect(() => {

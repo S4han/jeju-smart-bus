@@ -257,6 +257,7 @@ export default function App() {
       onSelect={handleMarkerSelect}
       fitBounds={fitBounds}
       fitPadding={layout === "side" ? SIDE_MAP_PADDING : SHEET_MAP_PADDING}
+      focus={selectedStop?.coordinates ?? null}
       onMapClick={pickTarget ? handleMapClick : undefined}
       ariaLabel="제주 지도"
     />
