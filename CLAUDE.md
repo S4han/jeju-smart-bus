@@ -30,6 +30,8 @@ src/style.css         # 기본 스타일, #map 높이 min(70vh,650px)
 src/vite-env.d.ts     # Vite 타입 참조
 api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts
 server/               # 서버 전용 로직(좌표 거부, 응답 형식, 마스킹, env) — src에서 import 금지
+shared/               # 브라우저·서버 공용 순수 코드: 도메인 타입(domain.ts), BIS 변환·스냅샷 가공(bis-convert.ts), 데이터 소스 계약(sources.ts)
+api/bis-probe.ts      # 임시 BIS 검증 함수(미리보기 전용) — 검증 TASK 종료 후 삭제
 scripts/check-bundle-secrets.mjs  # build 마지막 단계: dist에 서버 비밀정보 있으면 실패
 .env.example          # VITE_NAVER_MAP_CLIENT_ID 자리표시자 (버스 API는 키 없이 호출 — D-25)
 ```

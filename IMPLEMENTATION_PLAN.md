@@ -341,8 +341,9 @@
 | TASK-005 | **실호출 완료(13회)** — GATE-01 통과(조건부), GATE-04 실시간 통과(조건부)·시간표 대체 근거 없음. `docs/verification/GATE-01.md`, `GATE-04.md` |
 | TASK-006 | **완료** — GATE-02·03 통과(D-26 가공 규칙 전제). D-19·D-21 제안 제출. `docs/verification/GATE-02-03.md` |
 | TASK-007 | 미착수 |
+| TASK-009 | **구현 완료** — 도메인 모델·변환·스냅샷 가공(`shared/`). 스냅샷 크기 실측 대기 |
 | TASK-008 | **비교 완료(A안 + NAVER 검색 API 보강), 사용자 선정 대기** — `docs/verification/U-001-place-search.md` |
-| TASK-009~020 | 미착수 |
+| TASK-010~020 | 미착수 |
 
 ### 결정 기록
 
