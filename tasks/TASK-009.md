@@ -58,6 +58,12 @@
 
 검증: `npm test` 89개 통과(신규 8개), `npm run build` 통과. `SNAPSHOT_FETCH=1` 로컬 빌드는 상류 접속 불가로 **빌드 실패 확인**(의도된 동작). 브라우저 점검(가상 스냅샷): 정류장명 검색 결과·좌표 없는 정류장 선택 불가·출처 표시, 요청은 `/`와 스냅샷 파일뿐. 실제 데이터 생성은 Vercel 미리보기 빌드에서 확인(아래).
 
+**Vercel 미리보기 빌드 확인(2026-10-26, 커밋 d74a343, 상류 호출 3회):**
+- 빌드 로그: `정류장 4352·노선 991·원천 갱신 2026-10-24 14:13:57`, `dist/data/transit-snapshot.v1.json` 1,124KB / gzip 129.6KB, 빌드 13.5초
+- 배포 파일 응답 200, `content-type: application/json`, `cache-control: public, max-age=0, must-revalidate`(ETag 재검증), brotli 압축
+- 내용 검사: `schemaVersion 1`, 정류장 4,352(좌표 확인 불가 1 — 406002082), 노선 991, 노선-정류장 행 51,500, 노선의 모든 정류장 ID가 정류장 목록에 존재 — TASK-009 실측과 동일
+- 같은 빌드 로그에 Vercel 함수 타입 검사 경고 2건(`Array.prototype.at`, `server/bis-analysis.ts`·`shared/bis-convert.ts`) — 이번 변경 이전 코드(ebcb6ce)이고 배포는 정상 완료. 별도 정리 대상
+
 갱신: 배포할 때만 갱신된다(R-23). 주기·방법은 D-28(미결).
 
 ## 수용 기준
