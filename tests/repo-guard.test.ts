@@ -49,10 +49,10 @@ describe("repo guard", () => {
     expect(offenders).toEqual([]);
   });
 
-  // TASK-011: 출발지 좌표는 메모리 상태로만 둔다 — 저장소·URL·네트워크·로그로 내보내는 코드를 막는다(PRIV-001~003)
-  it("src/origin은 저장소·URL·네트워크·console에 접근하지 않는다", () => {
+  // TASK-011·012: 출발지 좌표는 메모리 상태로만 둔다 — 저장소·URL·네트워크·로그로 내보내는 코드를 막는다(PRIV-001~003)
+  it("src/origin·src/stops는 저장소·URL·네트워크·console에 접근하지 않는다", () => {
     const forbidden = /\b(localStorage|sessionStorage|indexedDB|document\.cookie|history\.|location\.(href|search|hash|assign|replace)|fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|console\s*\.)/;
-    const offenders = listFiles("src/origin").filter((file) => forbidden.test(readFileSync(file, "utf8")));
+    const offenders = [...listFiles("src/origin"), ...listFiles("src/stops")].filter((file) => forbidden.test(readFileSync(file, "utf8")));
     expect(offenders).toEqual([]);
   });
 });

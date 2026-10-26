@@ -12,6 +12,7 @@ import { OriginPanel } from "./origin/OriginPanel";
 import { originFromMapPoint, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
+import { NearbyStops } from "./stops/NearbyStops";
 
 // 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
 const JEJU = { lat: 33.4996, lng: 126.5312 };
@@ -75,6 +76,7 @@ export default function App() {
         picking={picking && mapPickAvailable}
         onPickingChange={setPicking}
       />
+      {origin && stopList.status === "ready" && <NearbyStops stops={stopList.stops} origin={origin.coordinates} />}
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>
   );
