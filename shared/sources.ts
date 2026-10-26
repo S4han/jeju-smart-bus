@@ -1,6 +1,7 @@
 // 데이터 접근 인터페이스 (TASK-009, D-01)
 // 정류장·노선은 정적 스냅샷, 도착정보는 서버 프록시(정류장 ID만 전송)에서 가져온다.
-// 실제 구현(네트워크)은 TASK-012·014에서, 여기서는 계약과 고정 데이터 구현만 둔다.
+// 실제 구현: 스냅샷은 src/data/httpSnapshotSource.ts, 도착정보는 src/data/httpArrivalSource.ts(조회 시점 나이 포함 — TASK-014).
+// 아래 ArrivalSource·고정 소스는 초기 계약으로 테스트에만 쓰인다.
 
 import type { TransitSnapshot } from "./bis-convert.js";
 import { failure, ok, type Arrival, type Result, type StopId } from "./domain.js";

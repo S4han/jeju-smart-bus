@@ -30,12 +30,13 @@ src/map/              # NAVER 지도 SDK 로더(1회 삽입·상태·인증 실�
                       # 지도 이용 동의(consent.ts·MapConsentPanel — 동의 전 SDK 요청 금지, D-27)
 src/style.css         # 기본 스타일, #map 높이 min(70vh,650px)
 src/vite-env.d.ts     # Vite 타입 참조
-api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts
+api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts(BusArrives 프록시, 정류장 ID 9자리만, 키 없음, 15초 CDN)
 server/               # 서버 전용 로직(좌표 거부, 응답 형식, 마스킹, env) — src에서 import 금지
 shared/               # 브라우저·서버 공용 순수 코드: 도메인 타입(domain.ts), BIS 변환·스냅샷 가공(bis-convert.ts), 데이터 소스 계약(sources.ts)
 src/origin/           # 출발지(TASK-011): 현재 위치 요청·정류장명 검색·지도 지정. 좌표는 메모리 상태만(저장소·URL·네트워크 금지, repo-guard 검사)
 src/stops/            # 주변 정류장(TASK-012): 500m → 동의 시 1km, 거리 계산은 shared/geo.ts(D-03)
                       # 지도·목록 동기화(TASK-013): 결과 상태 1개(useNearbyStops)를 지도 항목(mapItems)과 목록이 공유
+src/arrivals/         # 도착정보 화면(TASK-014): 판정은 shared/arrivals.ts — 스냅샷 노선으로 정류장 일치, 화면 시점 나이 ≤120초만 실시간
 src/data/             # 정적 스냅샷 로드(httpSnapshotSource — 고정 경로 1개 요청·형식 검사), 데이터 출처 표시
 server/snapshot-build.ts + vite.config.ts  # Vercel 빌드(VERCEL=1) 때 BIS 3회 호출 → dist/data/transit-snapshot.v1.json. 로컬 빌드는 생략
 api/bis-probe.ts      # 임시 BIS 검증 함수(미리보기 전용) — 검증 TASK 종료 후 삭제

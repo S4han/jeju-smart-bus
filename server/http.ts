@@ -10,8 +10,7 @@ export interface ApiErrorBody {
   code: string;
 }
 
-// 아직 캐시 가능한 성공 응답이 없으므로 기본은 no-store (PRIV-003).
-// 정류장 ID 단위 성공 응답의 s-maxage 값은 GATE-04 이후 결정한다.
+// 기본은 no-store (PRIV-003). 정류장 ID 단위 도착정보 성공 응답만 짧게 CDN 캐시한다(server/arrivals.ts)
 export const NO_STORE = "no-store";
 
 export function jsonResponse(

@@ -42,7 +42,7 @@ export interface Arrival {
   vehicleId: string | null;
   minutesToArrival: number | null;
   stopsAway: number | null;
-  // 상류 산출 시각(ISO 8601). 신선도 판정(D-04)은 TASK-014에서 수행
+  // 상류 산출 시각(ISO 8601, UTC로 정규화). 신선도 판정(D-04)은 shared/arrivals.ts
   calculatedAt: string;
   source: "realtime";
 }

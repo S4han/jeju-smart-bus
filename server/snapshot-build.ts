@@ -3,9 +3,10 @@
 // 상류가 비정상이면 예외를 던져 빌드를 실패시킨다 — 운영에는 직전 배포가 유지된다.
 
 import { buildSnapshot, type SnapshotStats, type TransitSnapshot } from "../shared/bis-convert.js";
+import { BIS_BASE_URL } from "./bis.js";
 import { extractItems, firstTag, type XmlRecord } from "./xml-summary.js";
 
-export const BIS_BASE_URL = "http://busopen.jeju.go.kr/OpenAPI/service/bis/";
+export { BIS_BASE_URL };
 const TIMEOUT_MS = 60_000;
 const OPERATIONS = ["Station", "Bus", "StationRoute"] as const;
 

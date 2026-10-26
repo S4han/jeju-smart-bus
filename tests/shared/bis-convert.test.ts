@@ -1,7 +1,7 @@
 // 도메인 변환·스냅샷 가공 규칙 (TASK-009, D-24·D-26, NFR-004, AC-004·AC-005·AC-020)
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildSnapshot, toArrival, toCoordinates, toStop, type RawRecord } from "../../shared/bis-convert";
+import { buildSnapshot, parseBisDateTime, toArrival, toCoordinates, toStop, type RawRecord } from "../../shared/bis-convert";
 
 const fixture = <T>(name: string): T => JSON.parse(readFileSync(`tests/fixtures/bis/${name}`, "utf8"));
 
@@ -49,7 +49,7 @@ describe("도착정보 변환", () => {
       vehicleId: "7983228",
       minutesToArrival: 25,
       stopsAway: 21,
-      calculatedAt: "2026-10-26T16:03:20+09:00",
+      calculatedAt: "2026-10-26T07:03:20.000Z",
       source: "realtime",
     });
   });
@@ -59,7 +59,7 @@ describe("도착정보 변환", () => {
   });
 
   it("오래된 행도 변환은 하되 산출 시각을 보존한다(신선도는 TASK-014)", () => {
-    expect(toArrival(staleExampleItems[1])?.calculatedAt).toBe("2025-05-08T17:44:48+09:00");
+    expect(toArrival(staleExampleItems[1])?.calculatedAt).toBe("2025-05-08T08:44:48.000Z");
   });
 
   it("필수 값이 없거나 형식이 틀리면 버린다", () => {
@@ -68,6 +68,17 @@ describe("도착정보 변환", () => {
     expect(toArrival({ ...base, calcDate: "어제" })).toBeNull();
     expect(toArrival({ ...base, stationOrd: "0" })).toBeNull();
     expect(toArrival({ ...base, routeId: "null" })).toBeNull();
+  });
+});
+
+describe("BIS 일시 해석 (D-04)", () => {
+  const kst = "2026-10-26T07:03:20.000Z";
+  it.each(["2026-10-26T16:03:20+09:00", "2026-10-26 16:03:20", "2026-10-26T16:03:20", "20261026160320"])(
+    "%s → 한국 시간으로 해석",
+    (v) => expect(new Date(parseBisDateTime(v)!).toISOString()).toBe(kst),
+  );
+  it.each([undefined, "", "null", "어제", "2026-13-01 00:00:00", "2026-10-26 25:00:00", "16:03:20"])("%s → null", (v) => {
+    expect(parseBisDateTime(v)).toBeNull();
   });
 });
 

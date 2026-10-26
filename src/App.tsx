@@ -3,6 +3,9 @@ import { SNAPSHOT_PATH } from "../shared/sources";
 import type { Coordinates } from "../shared/domain";
 import { createHttpSnapshotSource } from "./data/httpSnapshotSource";
 import { DataAttribution } from "./data/DataAttribution";
+import { createHttpArrivalSource } from "./data/httpArrivalSource";
+import { ArrivalPanel } from "./arrivals/ArrivalPanel";
+import { useArrivals } from "./arrivals/useArrivals";
 import { MapConsentPanel } from "./map/MapConsentPanel";
 import { NaverMap } from "./map/NaverMap";
 import { STATUS_MESSAGES } from "./map/naverSdk";
@@ -22,6 +25,9 @@ const POC_ITEMS = [{ id: "jeju-city", title: "제주시", coordinates: JEJU }];
 
 // 정류장·노선 정적 스냅샷(D-01, D-10 (A) 승인) — 빌드 때 생성된 공개 데이터 파일
 const SNAPSHOT_SOURCE = createHttpSnapshotSource(`${import.meta.env.BASE_URL}${SNAPSHOT_PATH}`);
+
+// 도착정보는 정류장 ID만 서버로 보낸다(TASK-014, D-22)
+const ARRIVAL_SOURCE = createHttpArrivalSource();
 
 export default function App() {
   const consent = useMapConsent();
@@ -51,6 +57,16 @@ export default function App() {
     () => (origin ? boundsOf([origin.coordinates, ...nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)]) : null),
     [origin, nearby.state],
   );
+  const selectedStop = useMemo(
+    () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
+    [nearby.state, selectedStopId],
+  );
+  const routesById = useMemo(
+    () => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []),
+    [stopList],
+  );
+  const arrivals = useArrivals(ARRIVAL_SOURCE, selectedStop?.id ?? null);
+
   const handleMarkerSelect = useCallback(
     (id: string) => {
       if (nearbyStopsOf(nearby.state).some((n) => n.stop.id === id)) setSelectedStopId(id);
@@ -101,6 +117,9 @@ export default function App() {
           selectedId={selectedStopId}
           onSelect={setSelectedStopId}
         />
+      )}
+      {selectedStop && (
+        <ArrivalPanel stop={selectedStop} state={arrivals.state} routesById={routesById} onRefresh={arrivals.refresh} />
       )}
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>

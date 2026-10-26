@@ -29,9 +29,8 @@ export function hasCoordinateParams(params: URLSearchParams): boolean {
   return false;
 }
 
-// 정류장 ID 형식은 실제 응답 검증(TASK-005, GATE-01) 전이라 미확정이다.
-// 그때까지는 경로 조작·주입을 막는 수준의 보수적 패턴만 적용한다.
-const STOP_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+// 정류장 ID 형식: 실데이터(스냅샷 정류장 4,352개, 2026-10-26) 전부 숫자 9자리(TASK-014)
+const STOP_ID_PATTERN = /^\d{9}$/;
 
 export function parseStopId(params: URLSearchParams): string | null {
   const values = params.getAll("stopId");
