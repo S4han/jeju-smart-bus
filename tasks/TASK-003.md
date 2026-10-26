@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | Phase | 0 — 착수 전 검증 |
-| 상태 | **1차 조사 완료, 판정 미완료** — 결과 `docs/verification/GATE-06.md`, §4 사용자 확인 대기 |
+| 상태 | **2차 판정** — Vercel·NAVER Maps 사용 가능(0원, 조건부 유지 요건 있음), 공공데이터포털 사용 가능 후보, 제주 LINK API는 TASK-005에서 확인. 결과 `docs/verification/GATE-06.md` |
 | 관련 | GATE-06, NFR-001·002, U-006, FR-017, R-06·07 |
 | 결정 의존 | D-02, D-15 |
 
