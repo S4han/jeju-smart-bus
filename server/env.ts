@@ -7,9 +7,11 @@ export const SERVER_ENV_NAMES = ["JEJU_BUS_API_KEY"] as const;
 
 export interface ServerEnv {
   jejuBusApiKey: string | undefined;
+  // Vercel 시스템 환경변수: "production" | "preview" | "development"
+  vercelEnv: string | undefined;
 }
 
 export function readServerEnv(): ServerEnv {
   const key = process.env.JEJU_BUS_API_KEY?.trim();
-  return { jejuBusApiKey: key ? key : undefined };
+  return { jejuBusApiKey: key ? key : undefined, vercelEnv: process.env.VERCEL_ENV };
 }
