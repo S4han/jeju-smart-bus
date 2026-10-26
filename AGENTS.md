@@ -56,8 +56,9 @@
 | 개발 서버 | `npm run dev` |
 | 빌드(타입 검사 포함) | `npm run build` |
 | 빌드 미리보기 | `npm run preview` |
+| 테스트 | `npm test` (Vitest) |
 
-테스트·린트 명령은 TASK-001 승인 후 추가된다. 추가 전에는 `npm run build` 통과를 최소 기준으로 한다.
+변경 후 최소 기준: `npm run build`와 `npm test` 통과. Node 버전은 `24.x`(Vercel과 동일).
 
 ## 6. 커밋·브랜치
 

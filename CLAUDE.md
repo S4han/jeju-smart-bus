@@ -16,7 +16,8 @@
 - React 19 + TypeScript 5.7 + Vite 6, `src/` 단일 컴포넌트 PoC
 - 지도: NAVER Dynamic Map JS SDK v3 (`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=...`)
 - 배포: Vercel (Git 연동, `vercel.json` 없음)
-- 테스트·린트·서버 함수: 아직 없음 (TASK-001, TASK-004에서 승인 후 도입)
+- 테스트: Vitest (`npm test`, `tests/`). 린트·서버 함수: 아직 없음 (서버 함수는 TASK-004)
+- Node: `engines.node` `24.x` (Vercel 프로젝트 설정과 동일)
 
 ## 현재 코드 구조
 
@@ -35,7 +36,7 @@ src/vite-env.d.ts     # Vite 타입 참조
 - `VITE_NAVER_MAP_CLIENT_ID`는 NAVER 지도 SDK 구조상 브라우저에 전달된다(도메인 제한 방식). 이 예외의 공식 인정 여부는 사용자 결정 D-17이다. **그 외 모든 키는 서버 전용**이다.
 - 실제 외부 API 호출은 사용자가 허용한 검증 TASK(TASK-005~008)에서만 한다. 그 외에는 검증된 픽스처로 테스트한다.
 - 응답·로그 예시를 채팅이나 문서에 붙일 때 키·좌표 원문을 제거한다.
-- `npm run build`는 `tsconfig.app.tsbuildinfo`를 생성하며 현재 `.gitignore`에 없다. 커밋하지 않도록 주의한다(TASK-001에서 정리).
+- `tests/repo-guard.test.ts`는 허용 목록 외 `VITE_` 변수 사용을 막는다. 새 클라이언트 환경변수가 필요하면 우회하지 말고 사용자 승인을 받는다.
 
 ## 작업 완료 보고 형식
 
