@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import handler from "../../api/arrivals";
-import { ARRIVALS_CACHE_CONTROL, createArrivalsHandler } from "../../server/arrivals";
+import { ARRIVALS_CACHE_CONTROL, QUOTA_BLOCK_MS, QUOTA_CACHE_CONTROL, RATE_LIMIT_BLOCK_MS, createArrivalsHandler } from "../../server/arrivals";
 
 function get(query: string): Promise<Response> {
   return handler.fetch(new Request(`https://example.test/api/arrivals${query}`));
@@ -108,5 +108,49 @@ describe("상류 연동 (TASK-014)", () => {
     await call(h, "../etc");
     await h(new Request("https://example.test/api/arrivals?stopId=406000191&lat=33.5"));
     expect(urls).toEqual([]);
+  });
+});
+
+describe("한도·호출 제한 (TASK-019, FR-017, AC-017 — 상류 코드 매핑은 미검증)", () => {
+  function counting(responses: Array<{ status?: number; body?: string }>) {
+    let t = OBSERVED;
+    const urls: string[] = [];
+    const impl = async (url: string) => {
+      const r = responses[Math.min(urls.length, responses.length - 1)];
+      urls.push(url);
+      return { ok: (r.status ?? 200) === 200, status: r.status ?? 200, text: async () => r.body ?? "" };
+    };
+    const h = createArrivalsHandler(impl, () => t);
+    return { urls, h, advance: (ms: number) => (t += ms) };
+  }
+
+  it("resultCode 22 → quota_exhausted(503), 이후 같은 인스턴스 요청은 상류 호출 0회, 10분 뒤 재개", async () => {
+    const { urls, h, advance } = counting([{ body: toXml([], "22") }, { body: toXml(items) }]);
+    const first = await call(h);
+    expect(first.status).toBe(503);
+    expect(await first.json()).toEqual({ status: "quota_exhausted", code: "upstream_quota_exhausted" });
+    expect(first.headers.get("Cache-Control")).toBe(QUOTA_CACHE_CONTROL);
+    for (const id of ["406000191", "405000153"]) expect((await call(h, id)).status).toBe(503);
+    expect(urls).toHaveLength(1);
+    advance(QUOTA_BLOCK_MS);
+    expect((await call(h)).status).toBe(200);
+    expect(urls).toHaveLength(2);
+  });
+
+  it.each([[{ status: 429 }], [{ body: toXml([], "23") }]])("호출 제한(%j) → rate_limited(429), 5초 동안 상류 호출 안 함", async (response) => {
+    const { urls, h, advance } = counting([response, { body: toXml(items) }]);
+    const res = await call(h);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("5");
+    expect(await res.json()).toEqual({ status: "rate_limited", code: "upstream_rate_limited" });
+    await call(h);
+    expect(urls).toHaveLength(1);
+    advance(RATE_LIMIT_BLOCK_MS);
+    expect((await call(h)).status).toBe(200);
+  });
+
+  it("한도·제한 응답에는 도착 데이터가 없다(대체 결과 생성 금지)", async () => {
+    const { h } = counting([{ body: toXml(items, "22") }]);
+    expect(await (await call(h)).json()).not.toHaveProperty("arrivals");
   });
 });

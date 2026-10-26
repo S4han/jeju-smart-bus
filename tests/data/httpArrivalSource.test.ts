@@ -1,6 +1,6 @@
 // 도착정보 요청 (TASK-014, D-22) — 정류장 ID만 보내고 응답 형식을 검사한다
 import { describe, expect, it } from "vitest";
-import { createHttpArrivalSource } from "../../src/data/httpArrivalSource";
+import { QUOTA_PAUSE_MS, RETRY_DELAYS_MS, createHttpArrivalSource } from "../../src/data/httpArrivalSource";
 
 const PAYLOAD = {
   status: "ok",
@@ -38,5 +38,52 @@ describe("createHttpArrivalSource", () => {
   it("서버 오류 → unavailable, 400 → invalid_input", async () => {
     expect(await createHttpArrivalSource(fake(504, { status: "unavailable" }).impl).getArrivals("406000191")).toEqual({ status: "unavailable", reason: "http_504" });
     expect((await createHttpArrivalSource(fake(400, {}).impl).getArrivals("406000191")).status).toBe("invalid_input");
+  });
+});
+
+describe("재시도·한도 소진 (TASK-019, FR-017)", () => {
+  function sequence(responses: Array<{ status: number; body: unknown }>) {
+    let now = 0;
+    const urls: string[] = [];
+    const sleeps: number[] = [];
+    const impl = async (url: string) => {
+      const r = responses[Math.min(urls.length, responses.length - 1)];
+      urls.push(url);
+      return { ok: r.status === 200, status: r.status, headers: { get: () => null }, json: async () => r.body };
+    };
+    const source = createHttpArrivalSource(impl, () => now, async (ms) => {
+      sleeps.push(ms);
+      now += ms;
+    });
+    return { urls, sleeps, source, advance: (ms: number) => (now += ms) };
+  }
+
+  it("rate_limited → 1초·2초 백오프 후 성공하면 결과", async () => {
+    const s = sequence([{ status: 429, body: { status: "rate_limited" } }, { status: 429, body: {} }, { status: 200, body: PAYLOAD }]);
+    expect((await s.source.getArrivals("406000191")).status).toBe("ok");
+    expect(s.sleeps).toEqual(RETRY_DELAYS_MS);
+  });
+
+  it("재시도 상한: 3번 모두 실패하면 rate_limited로 끝(무한 재시도 없음)", async () => {
+    const s = sequence([{ status: 429, body: { status: "rate_limited" } }]);
+    expect((await s.source.getArrivals("406000191")).status).toBe("rate_limited");
+    expect(s.urls).toHaveLength(3);
+  });
+
+  it("quota_exhausted → 재시도 없음, 10분 동안 요청 자체를 보내지 않음", async () => {
+    const s = sequence([{ status: 503, body: { status: "quota_exhausted" } }, { status: 200, body: PAYLOAD }]);
+    expect((await s.source.getArrivals("406000191")).status).toBe("quota_exhausted");
+    expect((await s.source.getArrivals("405000153")).status).toBe("quota_exhausted");
+    expect(s.urls).toHaveLength(1);
+    s.advance(QUOTA_PAUSE_MS);
+    expect((await s.source.getArrivals("406000191")).status).toBe("ok");
+  });
+
+  it("상류 오류(502)는 재시도하지 않는다, 시간 초과(504)는 재시도", async () => {
+    const a = sequence([{ status: 502, body: { status: "unavailable" } }]);
+    expect((await a.source.getArrivals("406000191")).status).toBe("unavailable");
+    expect(a.urls).toHaveLength(1);
+    const b = sequence([{ status: 504, body: { status: "unavailable" } }, { status: 200, body: PAYLOAD }]);
+    expect((await b.source.getArrivals("406000191")).status).toBe("ok");
   });
 });

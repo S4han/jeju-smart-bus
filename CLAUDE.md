@@ -41,6 +41,7 @@ src/route/            # 경로: 탐색 시작 조건(candidates.ts — 출발지
 src/stops/            # 주변 정류장(TASK-012): 500m → 동의 시 1km, 거리 계산은 shared/geo.ts(D-03)
                       # 지도·목록 동기화(TASK-013): 결과 상태 1개(useNearbyStops)를 지도 항목(mapItems)과 목록이 공유
 src/arrivals/         # 도착정보 화면(TASK-014): 판정은 shared/arrivals.ts — 스냅샷 노선으로 정류장 일치, 화면 시점 나이 ≤120초만 실시간
+src/service/           # 장애 영향 안내(TASK-019): 기능별 의존성 지도(impact.ts), 상단 안내(ServiceNotices)
 src/data/             # 정적 스냅샷 로드(httpSnapshotSource — 고정 경로 1개 요청·형식 검사), 데이터 출처 표시
 server/snapshot-build.ts + vite.config.ts  # Vercel 빌드(VERCEL=1) 때 BIS 3회 호출 → dist/data/transit-snapshot.v1.json. 로컬 빌드는 생략
 api/bis-probe.ts      # 임시 BIS 검증 함수(미리보기 전용) — 검증 TASK 종료 후 삭제

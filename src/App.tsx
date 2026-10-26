@@ -23,6 +23,8 @@ import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
 import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
 import { useRouteSearch } from "./route/useRouteSearch";
+import { impactNotice, type Cause, type Service } from "./service/impact";
+import { ServiceNotices } from "./service/ServiceNotices";
 
 // 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
 const JEJU = { lat: 33.4996, lng: 126.5312 };
@@ -116,10 +118,23 @@ export default function App() {
     [nearby.state],
   );
 
+  // 서비스 장애 영향 안내(TASK-019). 지도는 동의한 경우에만 대상, 도착정보 장애는 도착정보 영역에서도 안내
+  const notices = useMemo(() => {
+    const down: Array<[Service, Cause]> = [];
+    if (granted && (status === "init_failed" || status === "load_failed" || status === "missing_client_id")) down.push(["naver_maps", "unavailable"]);
+    if (stopList.status === "unavailable") down.push(["snapshot", "unavailable"]);
+    const arrivalCause = arrivals.state.status;
+    if (arrivalCause === "unavailable" || arrivalCause === "rate_limited" || arrivalCause === "quota_exhausted" || arrivalCause === "inconsistent")
+      down.push(["bus_arrivals", arrivalCause]);
+    const services = down.map(([svc]) => svc);
+    return down.map(([svc, cause]) => impactNotice(svc, cause, services));
+  }, [granted, status, stopList.status, arrivals.state.status]);
+
   return (
     <main>
       <h1>제주 스마트 버스</h1>
       <p>네이버 Dynamic Map 연결 테스트</p>
+      <ServiceNotices notices={notices} />
       {consent.state === "granted" ? (
         <>
           <NaverMap

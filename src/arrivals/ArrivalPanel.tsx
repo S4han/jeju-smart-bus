@@ -13,9 +13,13 @@ interface ArrivalPanelProps {
   onRefresh: () => void;
 }
 
+// 장애 원인별 안내(TASK-019). 실패 시에는 이전 값·추정치를 보여 주지 않는다(AC-017)
 const FAILURE_MESSAGES: Record<string, string> = {
   invalid_input: "이 정류장의 도착정보를 요청할 수 없습니다.",
   inconsistent: "도착정보 응답이 이 정류장과 맞지 않아 표시하지 않습니다.",
+  rate_limited: "도착정보 요청이 많아 잠시 응답하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+  quota_exhausted: "도착정보 서비스 이용 한도에 도달해 도착정보 조회를 잠시 중단했습니다.",
+  unavailable: "도착정보 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 export function ArrivalPanel({ stop, state, routesById, onRefresh }: ArrivalPanelProps) {
@@ -34,7 +38,10 @@ export function ArrivalPanel({ stop, state, routesById, onRefresh }: ArrivalPane
       <div aria-live="polite">
         {state.status === "loading" && <p>도착정보를 불러오는 중입니다…</p>}
         {state.status !== "loading" && state.status !== "ready" && state.status !== "idle" && (
-          <p>{FAILURE_MESSAGES[state.status] ?? "도착정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}</p>
+          <>
+            <p>{FAILURE_MESSAGES[state.status] ?? "도착정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}</p>
+            <p className="arrivals-note">정류장 검색·주변 정류장·경로 찾기는 계속 이용할 수 있습니다.</p>
+          </>
         )}
         {board && (
           <>
