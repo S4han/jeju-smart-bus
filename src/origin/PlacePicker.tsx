@@ -33,7 +33,14 @@ export function PlacePicker({ label, stopList, onSelect, mapPickAvailable, picki
         <p>정류장 데이터를 불러오는 중입니다…</p>
       ) : (
         <>
-          <input id={inputId} type="search" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
+          <input
+            id={inputId}
+            type="search"
+            value={query}
+            placeholder="예: 제주시청, 공항"
+            onChange={(e) => setQuery(e.target.value)}
+            autoComplete="off"
+          />
           <p className="origin-hint">목록에서 정류장을 골라야 {label}로 정해집니다.</p>
           {query.trim() !== "" && results.length === 0 && <p>일치하는 정류장이 없습니다.</p>}
           {results.length > 0 && (
@@ -48,8 +55,18 @@ export function PlacePicker({ label, stopList, onSelect, mapPickAvailable, picki
                       onPickingChange(false);
                     }}
                   >
-                    {stop.name} <span className="origin-stop-id">({stop.id})</span>
-                    {!selectable && <span> — 위치 확인 불가, 선택할 수 없음</span>}
+                    <span className="row-main">
+                      <span className="nearby-name">{stop.name}</span>
+                      <span className="origin-stop-id">
+                        정류장 번호 {stop.id}
+                        {!selectable && " · 위치 확인 불가, 선택할 수 없음"}
+                      </span>
+                    </span>
+                    {selectable && (
+                      <span className="row-chevron" aria-hidden="true">
+                        ›
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}

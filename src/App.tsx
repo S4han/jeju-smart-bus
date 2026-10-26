@@ -12,7 +12,7 @@ import { STATUS_MESSAGES } from "./map/naverSdk";
 import { useMapConsent } from "./map/useMapConsent";
 import { useNaverMaps } from "./map/useNaverMaps";
 import { OriginPanel } from "./origin/OriginPanel";
-import { originFromMapPoint, type Origin } from "./origin/origin";
+import { describeOrigin, originFromMapPoint, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
@@ -26,10 +26,14 @@ import { useRouteSearch } from "./route/useRouteSearch";
 import { useJourneyTimes } from "./route/useJourneyTimes";
 import { impactNotice, type Cause, type Service } from "./service/impact";
 import { ServiceNotices } from "./service/ServiceNotices";
+import { BottomSheet, type SheetSnap } from "./ui/BottomSheet";
 
-// 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
+// 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 지도 동작·상태 문구는 PoC와 같다(TASK-010). 화면 구성은 TASK-022
 const JEJU = { lat: 33.4996, lng: 126.5312 };
 const POC_ITEMS = [{ id: "jeju-city", title: "제주시", coordinates: JEJU }];
+
+// 지도 위에 떠 있는 출발·도착 카드를 피해 지도 범위를 맞춘다(TASK-022)
+const MAP_SCREEN_PADDING = { top: 150, right: 40, bottom: 40, left: 40 };
 
 // 정류장·노선 정적 스냅샷(D-01, D-10 (A) 승인) — 빌드 때 생성된 공개 데이터 파일
 const SNAPSHOT_SOURCE = createHttpSnapshotSource(`${import.meta.env.BASE_URL}${SNAPSHOT_PATH}`);
@@ -133,32 +137,33 @@ export default function App() {
     return down.map(([svc, cause]) => impactNotice(svc, cause, services));
   }, [granted, status, stopList.status, arrivals.state.status]);
 
-  return (
-    <main>
-      <h1>제주 스마트 버스</h1>
-      <p>네이버 Dynamic Map 연결 테스트</p>
-      <ServiceNotices notices={notices} />
-      {consent.state === "granted" ? (
-        <>
-          <NaverMap
-            maps={maps}
-            center={JEJU}
-            zoom={11}
-            items={items}
-            selectedId={selectedStopId}
-            onSelect={handleMarkerSelect}
-            fitBounds={fitBounds}
-            onMapClick={pickTarget ? handleMapClick : undefined}
-            ariaLabel="제주 지도"
-          />
-          <p aria-live="polite">{STATUS_MESSAGES[status]}</p>
-          <button type="button" className="link-button" onClick={consent.revoke}>
-            지도 이용 동의 철회
-          </button>
-        </>
-      ) : (
-        <MapConsentPanel state={consent.state} onGrant={consent.grant} onDecline={consent.decline} />
-      )}
+  const describe = (place: Origin | null) => (place ? describeOrigin(place) : null);
+
+  // 지도 전체 화면 + 아래 패널(TASK-022). 지도를 보여 줘야 할 때(경로 상세, 지도에서 지정)는 패널을 접는다
+  const [sheet, setSheet] = useState<SheetSnap>("peek");
+  useEffect(() => {
+    if (selectedJourneyId || pickTarget) setSheet("peek");
+  }, [selectedJourneyId, pickTarget]);
+
+  const trip = (floating: boolean) => (
+    <nav className={floating ? "trip is-floating" : "trip"} aria-label="출발지·목적지 요약">
+      <a className="trip-row" href="#origin-title" onClick={() => setSheet("full")}>
+        <span className="trip-dot" aria-hidden="true" />
+        <span className="trip-label">출발</span>
+        <span className={describe(origin) ? "trip-value" : "trip-value is-empty"}>{describe(origin) ?? "출발지를 정해 주세요"}</span>
+        <span className="trip-chevron" aria-hidden="true">›</span>
+      </a>
+      <a className="trip-row is-destination" href="#destination-title" onClick={() => setSheet("full")}>
+        <span className="trip-dot" aria-hidden="true" />
+        <span className="trip-label">도착</span>
+        <span className={describe(destination) ? "trip-value" : "trip-value is-empty"}>{describe(destination) ?? "목적지를 정해 주세요"}</span>
+        <span className="trip-chevron" aria-hidden="true">›</span>
+      </a>
+    </nav>
+  );
+
+  const panels = (
+    <>
       <OriginPanel
         origin={origin}
         onChange={setOrigin}
@@ -210,6 +215,64 @@ export default function App() {
         timing={journeyTimes.state}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
-    </main>
+    </>
+  );
+
+  const hero = (
+    <section className="hero" aria-label="출발지와 목적지">
+      <p className="hero-title">어디로 갈까요?</p>
+      <p className="hero-sub">주변 정류장, 실시간 도착, 환승 2회까지 버스 경로를 찾아요.</p>
+    </section>
+  );
+
+  // 지도 미동의: 지도 없이 카드 화면(D-27)
+  if (consent.state !== "granted") {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <h1>제주 스마트 버스</h1>
+        </header>
+        <main className="page">
+          <ServiceNotices notices={notices} />
+          {hero}
+          {trip(false)}
+          <MapConsentPanel state={consent.state} onGrant={consent.grant} onDecline={consent.decline} />
+          {panels}
+        </main>
+      </div>
+    );
+  }
+
+  // 지도 동의: 지도는 접힌 패널 위에서 끝나 NAVER 로고가 항상 보인다. 펼친 패널은 화면 전체를 덮어 지도를 일부만 보이지 않게 한다
+  return (
+    <div className={`map-screen is-${sheet}`}>
+      <h1 className="visually-hidden">제주 스마트 버스</h1>
+      <section className="map-stage" aria-label="지도">
+        <NaverMap
+          maps={maps}
+          center={JEJU}
+          zoom={11}
+          items={items}
+          selectedId={selectedStopId}
+          onSelect={handleMarkerSelect}
+          fitBounds={fitBounds}
+          fitPadding={MAP_SCREEN_PADDING}
+          onMapClick={pickTarget ? handleMapClick : undefined}
+          ariaLabel="제주 지도"
+        />
+        {trip(true)}
+      </section>
+      <BottomSheet snap={sheet} onSnapChange={setSheet} label="버스 정보 패널">
+        <ServiceNotices notices={notices} />
+        {sheet === "full" && hero}
+        {panels}
+        <div className="map-caption">
+          <p aria-live="polite">{STATUS_MESSAGES[status]}</p>
+          <button type="button" className="link-button" onClick={consent.revoke}>
+            지도 이용 동의 철회
+          </button>
+        </div>
+      </BottomSheet>
+    </div>
   );
 }
