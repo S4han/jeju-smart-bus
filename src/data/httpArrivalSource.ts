@@ -1,6 +1,6 @@
 // 도착정보 요청 (TASK-014, FR-005, D-22) — 정류장 ID만 보낸다. 좌표·출발지는 보내지 않는다
 import type { ArrivalsPayload } from "../../shared/arrivals";
-import { failure, ok, type Result, type ResultStatus, type StopId } from "../../shared/domain";
+import { failure, ok, type Result, type ResultStatus, type RouteId, type StopId } from "../../shared/domain";
 
 export interface ArrivalsSnapshot {
   payload: ArrivalsPayload;
@@ -26,11 +26,12 @@ export function createHttpArrivalSource(
 ) {
   let pausedUntil = -Infinity;
 
-  async function once(stopId: StopId): Promise<Result<ArrivalsSnapshot> | Failure> {
+  async function once(stopId: StopId, routeId?: RouteId): Promise<Result<ArrivalsSnapshot> | Failure> {
     let body: unknown;
     let cacheAgeSeconds = 0;
+    const query = `stopId=${encodeURIComponent(stopId)}${routeId ? `&routeId=${encodeURIComponent(routeId)}` : ""}`;
     try {
-      const res = await fetchImpl(`/api/arrivals?stopId=${encodeURIComponent(stopId)}`);
+      const res = await fetchImpl(`/api/arrivals?${query}`);
       if (!res.ok) {
         const status = await res.json().then((b) => (isRecord(b) ? b.status : null)).catch(() => null);
         if (res.status === 400) return { status: "invalid_input", reason: "http_400" };
@@ -44,22 +45,27 @@ export function createHttpArrivalSource(
     } catch {
       return { status: "unavailable", reason: "network_or_parse" };
     }
-    if (!isPayload(body) || body.stopId !== stopId) return failure("inconsistent", "payload_mismatch");
+    if (!isPayload(body) || body.stopId !== stopId || body.routeId !== routeId) return failure("inconsistent", "payload_mismatch");
+    if (routeId && !body.arrivals.every((a) => typeof a.stopId === "string" && a.routeId === routeId)) return failure("inconsistent", "payload_mismatch");
     return ok({ payload: body, cacheAgeSeconds, receivedAtMs: clock() });
   }
 
-  return {
-    async getArrivals(stopId: StopId): Promise<Result<ArrivalsSnapshot>> {
+  async function withRetry(stopId: StopId, routeId?: RouteId): Promise<Result<ArrivalsSnapshot>> {
       // 한도 소진 뒤에는 요청 자체를 보내지 않는다(AC-017)
       if (clock() < pausedUntil) return failure("quota_exhausted", "paused");
       for (let attempt = 0; ; attempt++) {
-        const result = await once(stopId);
+        const result = await once(stopId, routeId);
         if (result.status === "quota_exhausted") pausedUntil = clock() + QUOTA_PAUSE_MS;
         const retryable = result.status === "rate_limited" || (result.status === "unavailable" && result.reason !== "http_502");
         if (!retryable || attempt >= RETRY_DELAYS_MS.length) return result as Result<ArrivalsSnapshot>;
         await sleep(RETRY_DELAYS_MS[attempt]);
       }
-    },
+  }
+
+  return {
+    getArrivals: (stopId: StopId) => withRetry(stopId),
+    // 노선 단위 예측(D-30, GATE-05). stopId는 그 노선의 정류장(상류 필수 값)
+    getRoutePredictions: (routeId: RouteId, stopId: StopId) => withRetry(stopId, routeId),
   };
 }
 
@@ -67,6 +73,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 
 function isPayload(v: unknown): v is ArrivalsPayload {
   if (!isRecord(v) || v.status !== "ok" || typeof v.stopId !== "string" || !Array.isArray(v.arrivals)) return false;
+  if (v.routeId !== undefined && typeof v.routeId !== "string") return false;
   return v.arrivals.every(
     (a) =>
       isRecord(a) &&
@@ -77,6 +84,7 @@ function isPayload(v: unknown): v is ArrivalsPayload {
       (a.stopsAway === null || typeof a.stopsAway === "number") &&
       typeof a.calculatedAt === "string" &&
       typeof a.ageSecondsAtFetch === "number" &&
-      Number.isFinite(a.ageSecondsAtFetch),
+      Number.isFinite(a.ageSecondsAtFetch) &&
+      (a.stopId === undefined || typeof a.stopId === "string"),
   );
 }

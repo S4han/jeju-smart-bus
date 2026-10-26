@@ -12,11 +12,15 @@ export const FUTURE_TOLERANCE_SECONDS = 60;
 export interface TimedArrival extends Arrival {
   // 서버가 상류를 조회한 시점의 데이터 나이(초). calculatedAt − 서버 시각
   ageSecondsAtFetch: number;
+  // 노선 단위 예측(routeId 조회, D-30)에서만: 예측 대상 정류장 ID(상류 arrvStationId)
+  stopId?: StopId;
 }
 
 export interface ArrivalsPayload {
   status: "ok";
   stopId: StopId;
+  // 노선 단위 예측 조회일 때만(D-30, GATE-05): 이 노선의 정류장별 "가장 먼저 도착할 차량" 예측
+  routeId?: RouteId;
   fetchedAt: string;
   arrivals: TimedArrival[];
   // 형식 오류로 버린 상류 행 수

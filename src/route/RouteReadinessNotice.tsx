@@ -4,7 +4,8 @@ import type { Route, RouteId, Stop, StopId } from "../../shared/domain";
 import { formatDistance } from "../stops/nearby";
 import { ENDPOINT_LABEL, type EndpointKey, type RouteReadiness } from "./candidates";
 import type { SearchResult } from "./engine";
-import { buildResultSections, type RankedJourney } from "./ranking";
+import { buildResultSections, type RankedJourney, type TimeEstimator } from "./ranking";
+import type { TimingState } from "./useJourneyTimes";
 import { explainJourney, type Section } from "./explain";
 import { journeySteps, type Step, type StopRef } from "./steps";
 
@@ -19,6 +20,8 @@ interface RouteReadinessNoticeProps {
   stopsById: ReadonlyMap<StopId, Stop>;
   selectedJourneyId: string | null;
   onSelectJourney: (id: string | null) => void;
+  estimator: TimeEstimator;
+  timing: TimingState;
 }
 
 export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, ...rest }: RouteReadinessNoticeProps) {
@@ -59,9 +62,11 @@ interface SearchResultsProps {
   stopsById: ReadonlyMap<StopId, Stop>;
   selectedJourneyId: string | null;
   onSelectJourney: (id: string | null) => void;
+  estimator: TimeEstimator;
+  timing: TimingState;
 }
 
-function SearchResults({ result, ...rest }: SearchResultsProps) {
+function SearchResults({ result, estimator, timing, ...rest }: SearchResultsProps) {
   if (result.status === "empty") {
     return (
       <p className="route-result">
@@ -71,19 +76,31 @@ function SearchResults({ result, ...rest }: SearchResultsProps) {
       </p>
     );
   }
-  const sections = buildResultSections(result.journeys);
+  const sections = buildResultSections(result.journeys, estimator);
   const shown = [...sections.recommended, ...sections.timeUnknown];
   return (
     <>
       <h3>추천 경로 (소요시간 기준)</h3>
       {sections.recommended.length === 0 ? (
-        <p>소요시간을 확인할 수 있는 경로가 없습니다. 대기·버스 이동 시간 자료를 아직 검증하지 못해 시간을 계산하지 않습니다.</p>
+        <p>
+          {timing.status === "loading"
+            ? "버스 실시간 예측을 불러오는 중입니다…"
+            : "지금 실시간 예측으로 소요시간을 계산할 수 있는 경로가 없습니다(제때 탈 수 있는 차량의 도착 예측이 경로와 이어지지 않음)."}
+        </p>
       ) : (
-        <ol className="route-list">
-          {sections.recommended.map((r) => (
-            <JourneyItem key={r.journey.id} ranked={r} section="recommended" {...rest} />
-          ))}
-        </ol>
+        <>
+          <p className="route-note">
+            버스 실시간 예측(제주 버스정보시스템)과 걷는 시간 추정(직선거리 기준)으로 계산했습니다. 예측은 몇 분씩 바뀔 수 있습니다.
+          </p>
+          <ol className="route-list">
+            {sections.recommended.map((r) => (
+              <JourneyItem key={r.journey.id} ranked={r} section="recommended" {...rest} />
+            ))}
+          </ol>
+        </>
+      )}
+      {timing.status === "ready" && timing.failedRoutes > 0 && (
+        <p className="route-note">일부 노선({timing.failedRoutes}개)의 실시간 예측을 불러오지 못해 해당 경로는 소요시간 미확인으로 두었습니다.</p>
       )}
       {sections.timeUnknown.length > 0 && (
         <>
@@ -101,7 +118,7 @@ function SearchResults({ result, ...rest }: SearchResultsProps) {
   );
 }
 
-type ItemProps = { ranked: RankedJourney; section: Section } & Omit<SearchResultsProps, "result">;
+type ItemProps = { ranked: RankedJourney; section: Section } & Omit<SearchResultsProps, "result" | "estimator" | "timing">;
 
 const routeLabel = (routesById: ReadonlyMap<RouteId, Route>, j: RankedJourney["journey"]) =>
   j.legs.map((l) => routesById.get(l.routeId)?.name ?? `노선 ${l.routeId}`).join(" → ");
@@ -123,7 +140,7 @@ function JourneyItem({ ranked, section, routesById, stopsById, selectedJourneyId
         승차 {name(first.boardStopId)} · 하차 {name(last.alightStopId)}
       </p>
       <p className="route-meta">
-        {totalTime ? `총 ${totalTime.minutes}분${totalTime.estimated ? " (추정 포함)" : ""}` : "총 소요시간 미확인"} · 걷기(직선) 출발{" "}
+        {totalTime ? `총 ${totalTime.minutes}분${totalTime.estimated ? " (추정 포함)" : ""} · 실시간 예측` : "총 소요시간 미확인"} · 걷기(직선) 출발{" "}
         {formatDistance(journey.originWalkMeters)} · 도착 {formatDistance(journey.destinationWalkMeters)}
       </p>
       <button type="button" className="link-button" aria-expanded={selected} onClick={() => onSelectJourney(selected ? null : journey.id)}>

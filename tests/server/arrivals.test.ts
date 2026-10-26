@@ -154,3 +154,30 @@ describe("한도·호출 제한 (TASK-019, FR-017, AC-017 — 상류 코드 매�
     expect(await (await call(h)).json()).not.toHaveProperty("arrivals");
   });
 });
+
+describe("노선 단위 예측 (TASK-017, D-30, GATE-05)", () => {
+  const routeRows = [
+    { arrvStationId: "405002036", arrvVhId: "7983632", calcDate: "2026-10-26T16:03:20+09:00", leftStation: "13", predictTravTm: "22", routeId: "405131201", stationOrd: "23", updnDir: "0" },
+    { arrvStationId: "405000322", arrvVhId: "7983632", calcDate: "2026-10-26T16:03:20+09:00", leftStation: "18", predictTravTm: "32", routeId: "405131201", stationOrd: "28", updnDir: "0" },
+    { arrvStationId: "", arrvVhId: "1", calcDate: "2026-10-26T16:03:20+09:00", leftStation: "1", predictTravTm: "1", routeId: "405131201", stationOrd: "29", updnDir: "0" },
+    { arrvStationId: "405000999", arrvVhId: "2", calcDate: "2026-10-26T16:03:20+09:00", leftStation: "1", predictTravTm: "1", routeId: "999999999", stationOrd: "3", updnDir: "0" },
+  ];
+
+  it("routeId·stopId → BusArriveInfo(route, station), 행에 예측 대상 정류장 ID, 다른 노선·정류장 없는 행은 버림", async () => {
+    const { urls, handler: h } = upstream({ body: toXml(routeRows) });
+    const res = await h(new Request("https://example.test/api/arrivals?stopId=405002036&routeId=405131201"));
+    expect(urls).toEqual(["http://busopen.jeju.go.kr/OpenAPI/service/bis/BusArriveInfo?route=405131201&station=405002036"]);
+    const body = await res.json();
+    expect(body).toMatchObject({ status: "ok", stopId: "405002036", routeId: "405131201", invalidRows: 2 });
+    expect(body.arrivals.map((a: { stopId: string; minutesToArrival: number }) => [a.stopId, a.minutesToArrival])).toEqual([["405002036", 22], ["405000322", 32]]);
+    expect(res.headers.get("Cache-Control")).toBe(ARRIVALS_CACHE_CONTROL);
+  });
+
+  it.each(["12345", "40513120a", "405131201&routeId=405131202"])("잘못된 routeId(%s) → 400, 상류 미호출", async (bad) => {
+    const { urls, handler: h } = upstream({ body: toXml(routeRows) });
+    const res = await h(new Request(`https://example.test/api/arrivals?stopId=405002036&routeId=${bad}`));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ status: "invalid_input", code: "invalid_route_id" });
+    expect(urls).toEqual([]);
+  });
+});

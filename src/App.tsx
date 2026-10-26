@@ -23,6 +23,7 @@ import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
 import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
 import { useRouteSearch } from "./route/useRouteSearch";
+import { useJourneyTimes } from "./route/useJourneyTimes";
 import { impactNotice, type Cause, type Service } from "./service/impact";
 import { ServiceNotices } from "./service/ServiceNotices";
 
@@ -109,6 +110,8 @@ export default function App() {
     () => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []),
     [stopList],
   );
+  // 결과 상위 경로의 노선 실시간 예측으로 총 소요시간 계산(TASK-017, GATE-05, D-30)
+  const journeyTimes = useJourneyTimes(ARRIVAL_SOURCE, routeSearch.result, routesById);
   const arrivals = useArrivals(ARRIVAL_SOURCE, selectedStop?.id ?? null);
 
   const handleMarkerSelect = useCallback(
@@ -203,6 +206,8 @@ export default function App() {
         stopsById={stopsById}
         selectedJourneyId={selectedJourneyId}
         onSelectJourney={setSelectedJourneyId}
+        estimator={journeyTimes.estimator}
+        timing={journeyTimes.state}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>

@@ -76,7 +76,7 @@ export interface TimeEstimator {
   walkMinutes(journey: Journey): number | null;
 }
 
-// GATE-05(TASK-007)·D-06 확정 전: 검증된 대기·이동·환승·도보 시간 근거가 없다 → 모든 경로가 시간 미확인
+// 실시간 예측을 불러오기 전·실패 시 기본값: 시간 근거 없음 → 모든 경로가 시간 미확인(실시간 예측 산정은 timing.ts)
 export const UNVERIFIED_TIME: TimeEstimator = { totalTime: () => null, walkMinutes: () => null };
 
 export function buildResultSections(journeys: ReadonlyArray<Journey>, time: TimeEstimator = UNVERIFIED_TIME): ResultSections {

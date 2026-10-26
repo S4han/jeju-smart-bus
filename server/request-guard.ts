@@ -37,3 +37,13 @@ export function parseStopId(params: URLSearchParams): string | null {
   if (values.length !== 1) return null;
   return STOP_ID_PATTERN.test(values[0]) ? values[0] : null;
 }
+
+// 노선 ID 형식: 실데이터(스냅샷 노선 991개, 2026-10-26) 전부 숫자 9자리(TASK-017, D-30). 없으면 undefined, 형식이 틀리면 null
+const ROUTE_ID_PATTERN = /^\d{9}$/;
+
+export function parseRouteId(params: URLSearchParams): string | null | undefined {
+  const values = params.getAll("routeId");
+  if (values.length === 0) return undefined;
+  if (values.length !== 1) return null;
+  return ROUTE_ID_PATTERN.test(values[0]) ? values[0] : null;
+}

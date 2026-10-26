@@ -87,3 +87,20 @@ describe("재시도·한도 소진 (TASK-019, FR-017)", () => {
     expect((await b.source.getArrivals("406000191")).status).toBe("ok");
   });
 });
+
+describe("노선 단위 예측 요청 (D-30)", () => {
+  const ROUTE_PAYLOAD = { ...PAYLOAD, stopId: "405002036", routeId: "405131201", arrivals: [{ ...PAYLOAD.arrivals[0], routeId: "405131201", stopId: "405002036" }] };
+
+  it("노선 ID와 정류장 ID만 쿼리로 보낸다", async () => {
+    const { urls, impl } = fake(200, ROUTE_PAYLOAD);
+    const r = await createHttpArrivalSource(impl).getRoutePredictions("405131201", "405002036");
+    expect(r.status).toBe("ok");
+    expect(urls).toEqual(["/api/arrivals?stopId=405002036&routeId=405131201"]);
+  });
+
+  it("다른 노선 응답·정류장 ID 없는 행은 inconsistent", async () => {
+    expect((await createHttpArrivalSource(fake(200, { ...ROUTE_PAYLOAD, routeId: "405131202" }).impl).getRoutePredictions("405131201", "405002036")).status).toBe("inconsistent");
+    const noStop = { ...ROUTE_PAYLOAD, arrivals: [{ ...PAYLOAD.arrivals[0], routeId: "405131201" }] };
+    expect((await createHttpArrivalSource(fake(200, noStop).impl).getRoutePredictions("405131201", "405002036")).status).toBe("inconsistent");
+  });
+});
