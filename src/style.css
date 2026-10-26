@@ -198,3 +198,17 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .route-leg { display: inline-flex; align-items: center; gap: 6px; }
 [id$="-title"] { scroll-margin-top: 72px; }
+
+/* 지도 전체 화면 + 아래 패널(TASK-022). 지도는 접힌 패널 위에서 끝나 NAVER 로고를 가리지 않는다 */
+.map-screen { --peek: 44dvh; position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
+.map-stage { position: absolute; left: 0; right: 0; top: 0; height: calc(100dvh - var(--peek)); }
+.map-stage #map { height: 100%; min-height: 0; }
+.trip.is-floating { position: absolute; z-index: 10; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px; max-width: 456px; margin: 0 auto; box-shadow: 0 6px 24px rgba(0, 0, 0, .12); }
+.sheet { position: absolute; z-index: 20; left: 0; right: 0; bottom: 0; height: var(--peek); display: flex; flex-direction: column; background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(0, 0, 0, .08); transition: height .25s ease; }
+.sheet.is-full { height: 100dvh; border-radius: 0; }
+.sheet.is-dragging { transition: none; }
+.sheet-handle { flex: none; display: flex; justify-content: center; width: 100%; padding: 10px 0 8px; border: 0; background: transparent; cursor: grab; touch-action: none; }
+.sheet-grip { width: 40px; height: 5px; border-radius: 3px; background: #d1d6db; }
+.sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 480px; margin: 0 auto; padding: 0 16px calc(96px + env(safe-area-inset-bottom)); }
+.sheet-body .map-caption { padding: 4px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

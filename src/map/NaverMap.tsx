@@ -16,10 +16,14 @@ interface NaverMapProps {
   onMapClick?: (coordinates: Coordinates) => void;
   // 바뀔 때마다 이 범위가 보이도록 지도를 맞춘다(null이면 그대로). TASK-013
   fitBounds?: { sw: Coordinates; ne: Coordinates } | null;
+  // 지도 위에 떠 있는 요소(출발·도착 카드 등)를 피해 맞출 여백(px). TASK-022
+  fitPadding?: { top: number; right: number; bottom: number; left: number };
   ariaLabel: string;
 }
 
-export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, ariaLabel }: NaverMapProps) {
+const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
+
+export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, ariaLabel }: NaverMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
 
@@ -61,10 +65,10 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
       map.setZoom(16);
     } else {
       map.fitBounds(new maps.LatLngBounds(new maps.LatLng(sw.lat, sw.lng), new maps.LatLng(ne.lat, ne.lng)), {
-        top: 40, right: 40, bottom: 40, left: 40,
+        ...fitPadding,
       });
     }
-  }, [maps, fitBounds]);
+  }, [maps, fitBounds, fitPadding]);
 
   useEffect(() => {
     const map = mapRef.current;
