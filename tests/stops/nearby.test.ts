@@ -7,7 +7,9 @@ import {
   expandNearby,
   findStopsWithin,
   formatDistance,
+  PAIR_MAX_METERS,
   searchNearby,
+  withPairStops,
 } from "../../src/stops/nearby";
 
 const ORIGIN: Coordinates = { lat: 33.5, lng: 126.5 };
@@ -95,5 +97,43 @@ describe("검색 흐름 (AC-003)", () => {
   it("거리 표시는 반올림(비교에는 쓰지 않음)", () => {
     expect(formatDistance(499.6)).toBe("500m");
     expect(formatDistance(1000)).toBe("1,000m");
+  });
+});
+
+// 짝 정류장(D-32): 반경 안 정류장과 이름이 같고 100m 이내인 반경 밖 정류장을 함께 포함
+
+describe("짝 정류장 (D-32)", () => {
+  const named = (id: string, name: string, coordinates: Coordinates | null): Stop => ({ id, name, coordinates });
+
+  it("반경 안 정류장과 같은 이름, 100m 이내 반경 밖 정류장은 뒤에 함께 포함", () => {
+    const stops = [named("A1", "정존마을", north(480)), named("A2", "정존마을", north(540)), named("B", "다른곳", north(300))];
+    const state = searchNearby(stops, ORIGIN);
+    expect(state.phase === "results" && state.stops.map((n) => [n.stop.id, n.pairOfId ?? null])).toEqual([
+      ["B", null],
+      ["A1", null],
+      ["A2", "A1"],
+    ]);
+  });
+
+  it("이름이 다르거나 100m를 넘거나 좌표가 없으면 포함하지 않음", () => {
+    const stops = [
+      named("A1", "정존마을", north(480)),
+      named("X", "정존마을앞", north(520)),
+      named("Far", "정존마을", north(480 + PAIR_MAX_METERS + 20)),
+      named("NoXY", "정존마을", null),
+    ];
+    const found = findStopsWithin(stops, ORIGIN, 500);
+    expect(withPairStops(stops, found, ORIGIN).map((n) => n.stop.id)).toEqual(["A1"]);
+  });
+
+  it("반경 안 결과가 0건이면 짝 정류장도 없음(확대 동의 흐름 그대로)", () => {
+    const state = searchNearby([named("A2", "정존마을", north(540))], ORIGIN);
+    expect(state.phase).toBe("offer_expansion");
+  });
+
+  it("짝 정류장 거리는 출발지에서 실제 거리", () => {
+    const stops = [named("A1", "정존마을", north(480)), named("A2", "정존마을", north(540))];
+    const pair = withPairStops(stops, findStopsWithin(stops, ORIGIN, 500), ORIGIN)[1];
+    expect(pair.distanceMeters).toBeCloseTo(540, 3);
   });
 });

@@ -29,16 +29,20 @@ export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onS
         {state.phase === "results" && (
           <>
             <p>
-              {placeLabel}에서 반경 {formatDistance(state.radiusMeters)} 안의 정류장 {state.stops.length}곳 (직선거리 기준)
+              {placeLabel}에서 반경 {formatDistance(state.radiusMeters)} 안의 정류장{" "}
+              {state.stops.filter((n) => !n.pairOfId).length}곳 (직선거리 기준)
+              {state.stops.some((n) => n.pairOfId) &&
+                ` · 반경 밖이지만 같은 이름 정류장 바로 옆(길 건너 반대 방향 등) ${state.stops.filter((n) => n.pairOfId).length}곳 함께 표시`}
             </p>
             <ol className="nearby-list" ref={listRef}>
-              {state.stops.map(({ stop, distanceMeters }) => {
+              {state.stops.map(({ stop, distanceMeters, pairOfId }) => {
                 const selected = stop.id === selectedId;
                 const main = (
                   <span className="row-main">
                     <span className="nearby-name">{stop.name}</span>
                     <span className="nearby-meta">
                       정류장 번호 {stop.id}
+                      {pairOfId && " · 반경 밖(같은 이름 정류장 옆)"}
                       {selected && " · 선택됨"}
                     </span>
                   </span>
