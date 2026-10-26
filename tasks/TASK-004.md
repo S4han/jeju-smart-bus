@@ -14,6 +14,7 @@
 - [ ] TASK-002 PRIV-001~003 통과(또는 조건부 통과 조건 반영)
 - [ ] TASK-003에서 Vercel·버스 API 사용 가능 판정
 - [x] D-02 승인(2026-10-26): Vercel Functions(`api/`)
+- [x] D-17 승인(2026-10-26): NAVER 지도 Client ID 외 모든 키는 서버 전용
 - [x] D-22 승인(2026-10-26): `GET /api/arrivals?stopId=…` 허용, 좌표 필드는 거부
 - [ ] Vercel 로그 보존 기간 확인(PRIV-001-004.md §4)
 - [ ] 의존성·환경변수·Vercel 설정 변경에 대한 사용자 승인

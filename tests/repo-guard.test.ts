@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// D-17 결정 전까지 기존 PoC가 사용하는 지도 Client ID만 허용한다.
+// D-17 승인: 도메인 제한 방식인 NAVER 지도 Client ID만 예외로 허용한다.
 const ALLOWED_CLIENT_ENV = ["VITE_NAVER_MAP_CLIENT_ID"];
 
 function listFiles(dir: string): string[] {
