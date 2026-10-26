@@ -21,6 +21,9 @@ interface NaverMapProps {
   ariaLabel: string;
 }
 
+// 이보다 멀리 축소하면 정류장 이름을 숨긴다 — 이름끼리 겹쳐 읽을 수 없게 되는 것을 막는다(TASK-024)
+export const LABEL_MIN_ZOOM = 15;
+
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 
 export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, ariaLabel }: NaverMapProps) {
@@ -69,6 +72,17 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
       });
     }
   }, [maps, fitBounds, fitPadding]);
+
+  // 확대 수준에 따라 정류장 이름 표시/숨김(지도 영역 class만 바꾼다)
+  useEffect(() => {
+    const map = mapRef.current;
+    const el = container.current;
+    if (!maps || !map || !el || typeof map.getZoom !== "function") return;
+    const update = () => el.classList.toggle("hide-marker-labels", map.getZoom() < LABEL_MIN_ZOOM);
+    update();
+    const listener = maps.Event.addListener(map, "zoom_changed", update);
+    return () => maps.Event.removeListener(listener);
+  }, [maps]);
 
   useEffect(() => {
     const map = mapRef.current;
