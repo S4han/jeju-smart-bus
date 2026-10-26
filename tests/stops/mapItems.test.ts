@@ -1,7 +1,7 @@
 // 지도·목록 동기화 (TASK-013, FR-004·FR-020, AC-004·AC-020)
 import { describe, expect, it } from "vitest";
 import type { Coordinates, Stop } from "../../shared/domain";
-import { markerHtml, toMarkerInputs } from "../../src/map/markers";
+import { escapeHtml, markerHtml, toMarkerInputs } from "../../src/map/markers";
 import { ORIGIN_ITEM_ID, boundsOf, nearbyMapItems, nearbyStopsOf } from "../../src/stops/mapItems";
 import { expandNearby, searchNearby, type NearbyState } from "../../src/stops/nearby";
 
@@ -63,5 +63,23 @@ describe("boundsOf", () => {
   it("출발지·정류장을 모두 담는 범위", () => {
     expect(boundsOf([ORIGIN, { lat: 33.4, lng: 126.6 }])).toEqual({ sw: { lat: 33.4, lng: 126.5 }, ne: { lat: 33.5, lng: 126.6 } });
     expect(boundsOf([])).toBeNull();
+  });
+});
+
+// 정류장 이름 라벨(TASK-024)
+
+describe("정류장 이름 라벨", () => {
+  const stop = { id: "405000001", title: "제주시청(광양방면)", position: { lat: 33.5, lng: 126.53 }, kind: "stop" as const };
+  it("정류장 마커에 이름을 함께 표시", () => {
+    expect(markerHtml(stop, false)).toContain('<span class="map-marker-label">제주시청(광양방면)</span>');
+    expect(markerHtml({ ...stop, id: "step-1", title: "1. 성산일출봉입구", kind: "step", stepNumber: 1 }, false)).toContain(
+      '<span class="map-marker-label">성산일출봉입구</span>',
+    );
+  });
+  it("외부 데이터 이름은 HTML로 해석되지 않게 이스케이프", () => {
+    const html = markerHtml({ ...stop, title: '<img src=x onerror="alert(1)">&' }, false)!;
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;");
+    expect(escapeHtml("A'B")).toBe("A&#39;B");
   });
 });

@@ -193,7 +193,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .map-marker-origin, .map-marker-destination { width: 40px; height: 24px; border-radius: 12px; color: #fff; font-size: 12px; font-weight: 700; line-height: 24px; text-align: center; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
 .map-marker-origin { background: var(--text); }
 .map-marker-destination { background: var(--red); }
-.map-marker-step { width: 28px; height: 28px; border-radius: 50%; background: var(--purple); color: #fff; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); font-size: 14px; font-weight: 700; line-height: 24px; text-align: center; }
+.map-marker-step { position: relative; width: 28px; height: 28px; border-radius: 50%; background: var(--purple); color: #fff; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); font-size: 14px; font-weight: 700; line-height: 24px; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .route-leg { display: inline-flex; align-items: center; gap: 6px; }
@@ -244,3 +244,12 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .is-side .cta-bar .route-search-button { min-height: 44px; font-size: 16px; }
   .side-body { padding-bottom: 72px; }
 }
+
+/* 정류장 이름 라벨(TASK-024): 점 오른쪽, 흰 테두리 글자로 지도 위에서도 읽히게. 축소하면 숨김(hide-marker-labels) */
+.map-marker-stop-wrap, .map-marker-step-wrap { position: relative; width: 24px; height: 24px; }
+.map-marker-step-wrap { width: 28px; height: 28px; }
+.map-marker-stop-wrap .map-marker-stop.is-selected { margin: 0; }
+.map-marker-label { position: absolute; left: calc(100% + 2px); top: 50%; transform: translateY(-50%); width: max-content; max-width: 8.5em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: keep-all; overflow-wrap: anywhere; color: var(--text); font-size: 12px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; pointer-events: none; text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff; }
+.map-marker-stop-wrap.is-selected .map-marker-label { color: var(--red); font-size: 13px; font-weight: 700; max-width: 12em; -webkit-line-clamp: 3; }
+.map-marker-step-wrap .map-marker-label { color: var(--purple); font-weight: 700; max-width: 10em; -webkit-line-clamp: 3; }
+.hide-marker-labels .map-marker-stop-wrap:not(.is-selected) .map-marker-label { display: none; }

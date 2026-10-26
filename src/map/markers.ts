@@ -37,12 +37,20 @@ export function toMarkerInputs(items: ReadonlyArray<MapItem>): MarkerInput[] {
       : []));
 }
 
-// 마커 모양(HTML). 이름은 화면 낭독용 title로도 제공한다
+// 정류장 이름은 외부 데이터(BIS)이므로 HTML로 넣기 전에 반드시 이스케이프한다
+export function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+const label = (text: string) => `<span class="map-marker-label">${escapeHtml(text)}</span>`;
+
+// 마커 모양(HTML). 이름은 화면 낭독용 title로도 제공한다. 정류장·단계 마커는 점 오른쪽에 정류장 이름 표시(TASK-024)
 export function markerHtml(input: MarkerInput, selected: boolean): string | null {
   if (input.kind === "origin") return '<div class="map-marker map-marker-origin" aria-hidden="true">출발</div>';
   if (input.kind === "destination") return '<div class="map-marker map-marker-destination" aria-hidden="true">도착</div>';
   if (input.kind === "step" && Number.isInteger(input.stepNumber))
-    return `<div class="map-marker map-marker-step" aria-hidden="true">${input.stepNumber}</div>`;
-  if (input.kind === "stop") return `<div class="map-marker map-marker-stop${selected ? " is-selected" : ""}" aria-hidden="true"></div>`;
+    return `<div class="map-marker map-marker-step-wrap" aria-hidden="true"><div class="map-marker-step">${input.stepNumber}</div>${label(input.title.replace(/^\d+\.\s*/, ""))}</div>`;
+  if (input.kind === "stop")
+    return `<div class="map-marker map-marker-stop-wrap${selected ? " is-selected" : ""}" aria-hidden="true"><div class="map-marker-stop${selected ? " is-selected" : ""}"></div>${label(input.title)}</div>`;
   return null;
 }
