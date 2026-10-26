@@ -1,6 +1,7 @@
-// 제주 BIS 실응답 검증용 임시 프로브 (TASK-005, GATE-01·04, U-006) — TASK-005 종료 후 삭제
+// 제주 BIS 실응답 검증용 임시 프로브 (TASK-005·006, GATE-01~04, U-006) — TASK-006 종료 후 삭제
 // 미리보기 배포에서만 동작한다. 응답 원문 대신 요약만 돌려주고, 로그를 남기지 않는다. 키는 보내지 않는다(D-25).
 
+import { busFieldStats, nearbyStationStats, outOfRangeStations, routeIntegrity } from "./bis-analysis.js";
 import { readServerEnv } from "./env.js";
 import { errorResponse, jsonResponse } from "./http.js";
 import { maskSecrets } from "./secrets.js";
@@ -15,7 +16,7 @@ import {
 } from "./xml-summary.js";
 
 const BASE_URL = "http://busopen.jeju.go.kr/OpenAPI/service/bis/";
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 30_000;
 
 // 명세(BIS-API-spec-summary.md §2)의 조회 오퍼레이션 중 TASK-005 계획에 있는 것만 허용
 const OPERATIONS: Record<string, ReadonlyArray<string>> = {
@@ -23,6 +24,7 @@ const OPERATIONS: Record<string, ReadonlyArray<string>> = {
   Station2: ["last"],
   Bus: ["last"],
   StationRoutePr: ["route"],
+  StationRoute: ["last"],
   BusArrives: ["station"],
   BusInfo: ["route"],
 };
@@ -44,6 +46,7 @@ export async function handleBisProbe(request: Request): Promise<Response> {
 
   const params = new URL(request.url).searchParams;
   const op = params.get("op") ?? "";
+  if (op === "Analysis") return handleAnalysis();
   const allowed = OPERATIONS[op];
   if (!allowed) return errorResponse(400, { status: "invalid_input", code: "operation_not_allowed" });
 
@@ -108,5 +111,37 @@ export async function handleBisProbe(request: Request): Promise<Response> {
       coordinates: records.some((r) => "localX" in r) ? coordinateQuality(records, "stationId") : undefined,
       sample: (sampleInUse ? records.filter((r) => r.useYn === "Y") : records).slice(0, sampleSize),
     },
+  });
+}
+
+// TASK-006: Station·Bus·StationRoute 전체를 받아 정합성 분석 결과만 돌려준다(상류 호출 3회)
+async function handleAnalysis(): Promise<Response> {
+  const started = Date.now();
+  const fetched: Record<string, ReturnType<typeof extractItems> & { bytes: number; resultCode: string | null }> = {};
+  for (const op of ["Station", "Bus", "StationRoute"]) {
+    try {
+      const res = await fetch(`${BASE_URL}${op}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      const body = await res.text();
+      fetched[op] = { ...extractItems(body), bytes: body.length, resultCode: firstTag(body, "resultCode") ?? null };
+    } catch (error) {
+      const reason = error instanceof Error ? `${error.name}: ${error.message}` : "unknown";
+      return jsonResponse(502, { status: "unavailable", code: "upstream_unreachable", op, reason });
+    }
+  }
+  const stations = fetched.Station.records;
+  const buses = fetched.Bus.records;
+  const stationRoutes = fetched.StationRoute.records;
+  return jsonResponse(200, {
+    op: "Analysis",
+    durationMs: Date.now() - started,
+    upstream: Object.fromEntries(
+      Object.entries(fetched).map(([op, f]) => [op, { resultCode: f.resultCode, bytes: f.bytes, count: f.records.length, fields: fieldNames(f.records) }]),
+    ),
+    stationRouteDates: stringRange(stationRoutes, "upd"),
+    stationRouteUseYn: distinctValues(stationRoutes, "useYn"),
+    routes: routeIntegrity(stations, buses, stationRoutes),
+    busFields: busFieldStats(buses),
+    outOfRangeStations: outOfRangeStations(stations),
+    nearby: nearbyStationStats(stations),
   });
 }
