@@ -26,7 +26,8 @@
 index.html            # lang="ko", #root
 src/main.tsx          # StrictMode로 <App/> 렌더
 src/App.tsx           # PoC 화면: 제주시 중심 지도 + 마커, 상태 문구
-src/map/              # NAVER 지도 SDK 로더(1회 삽입·상태·인증 실패), 지도 컴포넌트, 마커 입력(좌표 확인된 항목만)
+src/map/              # NAVER 지도 SDK 로더(1회 삽입·상태·인증 실패), 지도 컴포넌트, 마커 입력(좌표 확인된 항목만),
+                      # 지도 이용 동의(consent.ts·MapConsentPanel — 동의 전 SDK 요청 금지, D-27)
 src/style.css         # 기본 스타일, #map 높이 min(70vh,650px)
 src/vite-env.d.ts     # Vite 타입 참조
 api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts
