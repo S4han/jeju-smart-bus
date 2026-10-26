@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SNAPSHOT_PATH } from "../shared/sources";
 import type { Coordinates } from "../shared/domain";
 import { createHttpSnapshotSource } from "./data/httpSnapshotSource";
@@ -13,6 +13,8 @@ import { originFromMapPoint, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
+import { boundsOf, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
+import { useNearbyStops } from "./stops/useNearbyStops";
 
 // 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
 const JEJU = { lat: 33.4996, lng: 126.5312 };
@@ -38,9 +40,22 @@ export default function App() {
     setPicking(false);
   }, []);
 
-  const items = useMemo(
-    () => (origin ? [...POC_ITEMS, { id: "origin", title: "출발지", coordinates: origin.coordinates }] : POC_ITEMS),
-    [origin],
+  // 지도와 목록은 같은 결과 상태를 쓴다(TASK-013, AC-004)
+  const nearby = useNearbyStops(stopList.status === "ready" ? stopList.stops : null, origin?.coordinates ?? null);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  useEffect(() => setSelectedStopId(null), [nearby.state]);
+
+  // 출발지 전에는 PoC 화면 그대로(제주시 마커), 출발지가 정해지면 출발지·주변 정류장만
+  const items = useMemo(() => (origin ? nearbyMapItems(nearby.state, origin.coordinates) : POC_ITEMS), [origin, nearby.state]);
+  const fitBounds = useMemo(
+    () => (origin ? boundsOf([origin.coordinates, ...nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)]) : null),
+    [origin, nearby.state],
+  );
+  const handleMarkerSelect = useCallback(
+    (id: string) => {
+      if (nearbyStopsOf(nearby.state).some((n) => n.stop.id === id)) setSelectedStopId(id);
+    },
+    [nearby.state],
   );
 
   return (
@@ -54,7 +69,9 @@ export default function App() {
             center={JEJU}
             zoom={11}
             items={items}
-            selectedId={origin ? "origin" : null}
+            selectedId={selectedStopId}
+            onSelect={handleMarkerSelect}
+            fitBounds={fitBounds}
             onMapClick={picking ? handleMapClick : undefined}
             ariaLabel="제주 지도"
           />
@@ -76,7 +93,15 @@ export default function App() {
         picking={picking && mapPickAvailable}
         onPickingChange={setPicking}
       />
-      {origin && stopList.status === "ready" && <NearbyStops stops={stopList.stops} origin={origin.coordinates} />}
+      {nearby.state && (
+        <NearbyStops
+          state={nearby.state}
+          onExpand={nearby.expand}
+          onDecline={nearby.decline}
+          selectedId={selectedStopId}
+          onSelect={setSelectedStopId}
+        />
+      )}
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>
   );

@@ -1,25 +1,23 @@
-// 주변 정류장 목록 (TASK-012, FR-003, AC-003). 지도 동기화는 TASK-013
-import { useEffect, useState } from "react";
-import type { Coordinates, Stop } from "../../shared/domain";
-import {
-  EXPANDED_RADIUS_METERS,
-  NEARBY_RADIUS_METERS,
-  declineExpansion,
-  expandNearby,
-  formatDistance,
-  searchNearby,
-  type NearbyState,
-} from "./nearby";
+// 주변 정류장 목록 (TASK-012 FR-003·AC-003, TASK-013 FR-004·AC-004)
+// 결과 상태는 부모가 지도와 함께 쓰고, 이 컴포넌트는 같은 상태를 목록으로 그린다.
+import { useEffect, useRef } from "react";
+import { EXPANDED_RADIUS_METERS, NEARBY_RADIUS_METERS, formatDistance, type NearbyState } from "./nearby";
 
 interface NearbyStopsProps {
-  stops: ReadonlyArray<Stop>;
-  origin: Coordinates;
+  state: NearbyState;
+  onExpand: () => void;
+  onDecline: () => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }
 
-export function NearbyStops({ stops, origin }: NearbyStopsProps) {
-  const [state, setState] = useState<NearbyState>(() => searchNearby(stops, origin));
-  // 출발지가 바뀌면 500m부터 다시 찾는다(이전 확대 동의는 이어지지 않음)
-  useEffect(() => setState(searchNearby(stops, origin)), [stops, origin]);
+export function NearbyStops({ state, onExpand, onDecline, selectedId, onSelect }: NearbyStopsProps) {
+  const listRef = useRef<HTMLOListElement>(null);
+  // 지도에서 고른 정류장이 목록에서도 보이도록 스크롤
+  useEffect(() => {
+    if (!selectedId) return;
+    listRef.current?.querySelector<HTMLElement>(`[data-stop-id="${CSS.escape(selectedId)}"]`)?.scrollIntoView?.({ block: "nearest" });
+  }, [selectedId]);
 
   return (
     <section className="nearby" aria-labelledby="nearby-title">
@@ -30,15 +28,27 @@ export function NearbyStops({ stops, origin }: NearbyStopsProps) {
             <p>
               출발지에서 반경 {formatDistance(state.radiusMeters)} 안의 정류장 {state.stops.length}곳 (직선거리 기준)
             </p>
-            <ol className="nearby-list">
-              {state.stops.map(({ stop, distanceMeters }) => (
-                <li key={stop.id}>
-                  <span className="nearby-name">{stop.name}</span>
-                  <span className="nearby-meta">
-                    {formatDistance(distanceMeters)} · 정류장 번호 {stop.id}
-                  </span>
-                </li>
-              ))}
+            <ol className="nearby-list" ref={listRef}>
+              {state.stops.map(({ stop, distanceMeters }) => {
+                const selected = stop.id === selectedId;
+                return (
+                  <li key={stop.id}>
+                    <button
+                      type="button"
+                      data-stop-id={stop.id}
+                      aria-pressed={selected}
+                      className={selected ? "is-selected" : undefined}
+                      onClick={() => onSelect(stop.id)}
+                    >
+                      <span className="nearby-name">{stop.name}</span>
+                      <span className="nearby-meta">
+                        {formatDistance(distanceMeters)} · 정류장 번호 {stop.id}
+                        {selected && " · 선택됨"}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
           </>
         )}
@@ -51,11 +61,11 @@ export function NearbyStops({ stops, origin }: NearbyStopsProps) {
                 : " 넓혀 찾지 않았습니다."}
             </p>
             <div className="nearby-actions">
-              <button type="button" onClick={() => setState((s) => expandNearby(s, stops, origin))}>
+              <button type="button" onClick={onExpand}>
                 {formatDistance(EXPANDED_RADIUS_METERS)}까지 찾기
               </button>
               {state.phase === "offer_expansion" && (
-                <button type="button" onClick={() => setState(declineExpansion)}>
+                <button type="button" onClick={onDecline}>
                   넓히지 않기
                 </button>
               )}
