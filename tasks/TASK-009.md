@@ -47,6 +47,19 @@
 
 `shared/`는 브라우저·서버 공용 순수 코드다. `server/`를 가져오지 않고 `console`·`VITE_`를 쓰지 않는다(`repo-guard`).
 
+### 스냅샷 배포 (2026-10-26, D-10 (A) 승인 후)
+| 파일 | 내용 |
+|---|---|
+| `server/snapshot-build.ts` | `Station`·`Bus`·`StationRoute` 3회 호출(키 없음) → `buildSnapshot`. HTTP 오류·`resultCode`≠`00`·0건·가공 후 정류장/노선 0개면 **예외 → 빌드 실패**(빈 데이터 배포 금지, 운영은 직전 배포 유지) |
+| `vite.config.ts` | `transit-snapshot` 플러그인: `VERCEL=1`(Vercel 빌드) 또는 `SNAPSHOT_FETCH=1`일 때만 생성해 `dist/data/transit-snapshot.v1.json`으로 넣음. 그 밖의 로컬 빌드는 생략(경고) |
+| `shared/sources.ts` | `SNAPSHOT_PATH` |
+| `src/data/httpSnapshotSource.ts` | 고정 경로 파일 1개만 요청(위치와 무관 — PRIV R-1), 형식 검사 실패 시 `inconsistent`로 전부 버림, 실패는 기억하지 않고 재시도 |
+| `src/data/DataAttribution.tsx` | 출처 "제주특별자치도 버스정보시스템 (공공데이터포털)" + 스냅샷 생성 시각(KST) |
+
+검증: `npm test` 89개 통과(신규 8개), `npm run build` 통과. `SNAPSHOT_FETCH=1` 로컬 빌드는 상류 접속 불가로 **빌드 실패 확인**(의도된 동작). 브라우저 점검(가상 스냅샷): 정류장명 검색 결과·좌표 없는 정류장 선택 불가·출처 표시, 요청은 `/`와 스냅샷 파일뿐. 실제 데이터 생성은 Vercel 미리보기 빌드에서 확인(아래).
+
+갱신: 배포할 때만 갱신된다(R-23). 주기·방법은 D-28(미결).
+
 ## 수용 기준
 - 좌표 없는 정류장이 "좌표 있음" 타입으로 변환되지 않는다(테스트).
 - 시간 값은 출처(실시간/추정)와 함께만 존재할 수 있다.

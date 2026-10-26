@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import type { Stop } from "../../shared/domain";
 import type { SnapshotSource } from "../../shared/sources";
 
-export type StopListState = { status: "loading" } | { status: "ready"; stops: Stop[] } | { status: "unavailable" };
+export type StopListState =
+  | { status: "loading" }
+  | { status: "ready"; stops: Stop[]; generatedAt: string }
+  | { status: "unavailable" };
 
 export function useStopNames(source: SnapshotSource): StopListState {
   const [state, setState] = useState<StopListState>({ status: "loading" });
@@ -12,7 +15,7 @@ export function useStopNames(source: SnapshotSource): StopListState {
     let active = true;
     source.loadSnapshot().then(
       (result) => {
-        if (active) setState(result.status === "ok" ? { status: "ready", stops: result.data.stops } : { status: "unavailable" });
+        if (active) setState(result.status === "ok" ? { status: "ready", stops: result.data.stops, generatedAt: result.data.generatedAt } : { status: "unavailable" });
       },
       () => {
         if (active) setState({ status: "unavailable" });

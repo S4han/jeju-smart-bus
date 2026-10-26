@@ -102,7 +102,7 @@ function ManualOrigin({ stopList, onSelect, mapPickAvailable, picking, onPicking
       <h3>출발지 직접 선택</h3>
       <label htmlFor={inputId}>정류장 이름 검색</label>
       {stopList.status === "unavailable" ? (
-        <p>정류장 데이터를 아직 제공하지 않습니다. 공공데이터 이용 조건을 확인한 뒤 제공할 예정입니다.</p>
+        <p>정류장 데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>
       ) : stopList.status === "loading" ? (
         <p>정류장 데이터를 불러오는 중입니다…</p>
       ) : (

@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { createStaticSources } from "../shared/sources";
+import { SNAPSHOT_PATH } from "../shared/sources";
 import type { Coordinates } from "../shared/domain";
+import { createHttpSnapshotSource } from "./data/httpSnapshotSource";
+import { DataAttribution } from "./data/DataAttribution";
 import { MapConsentPanel } from "./map/MapConsentPanel";
 import { NaverMap } from "./map/NaverMap";
 import { STATUS_MESSAGES } from "./map/naverSdk";
@@ -15,8 +17,8 @@ import { useStopNames } from "./origin/useStopNames";
 const JEJU = { lat: 33.4996, lng: 126.5312 };
 const POC_ITEMS = [{ id: "jeju-city", title: "제주시", coordinates: JEJU }];
 
-// 정류장 스냅샷의 브라우저 제공은 D-10(공공데이터 이용 조건) 확인 전까지 보류 — 빈 소스로 "제공 불가"를 표시한다
-const SNAPSHOT_SOURCE = createStaticSources(null);
+// 정류장·노선 정적 스냅샷(D-01, D-10 (A) 승인) — 빌드 때 생성된 공개 데이터 파일
+const SNAPSHOT_SOURCE = createHttpSnapshotSource(`${import.meta.env.BASE_URL}${SNAPSHOT_PATH}`);
 
 export default function App() {
   const consent = useMapConsent();
@@ -73,6 +75,7 @@ export default function App() {
         picking={picking && mapPickAvailable}
         onPickingChange={setPicking}
       />
+      <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>
   );
 }

@@ -5,6 +5,9 @@
 import type { TransitSnapshot } from "./bis-convert.js";
 import { failure, ok, type Arrival, type Result, type StopId } from "./domain.js";
 
+// 정적 스냅샷의 배포 경로(빌드 결과 dist 기준). 형식이 바뀌면 파일명 버전을 올린다
+export const SNAPSHOT_PATH = "data/transit-snapshot.v1.json";
+
 export interface SnapshotSource {
   loadSnapshot(): Promise<Result<TransitSnapshot>>;
 }
