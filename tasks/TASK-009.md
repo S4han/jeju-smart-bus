@@ -18,7 +18,8 @@
 2. 결과 상태: `ok` / `empty` / `stale` / `inconsistent` / `unavailable` / `quota_exhausted` / `invalid_input` — UI가 원인별 안내를 할 수 있도록 구분
 3. 데이터 접근 인터페이스: 정류장·노선 원천(정적 스냅샷 또는 API, D-01), 도착정보(서버 프록시). 테스트용 픽스처 구현
 4. 외부 응답 → 도메인 변환기: 필수 필드 누락·형식 오류 시 추정값으로 채우지 않고 `invalid`/제외 처리
-5. GATE-01 가공 규칙: `useYn=Y`만 사용, 문자열 `"null"`은 값 없음, **경도·위도 뒤바뀐 정류장은 보정하지 않고 `coordinates: unavailable`(D-24)**, 제주 범위 밖 정류장은 TASK-006 분류 결과 반영
+5. 가공 규칙(D-24·D-26): 정류장 `useYn=Y`, 노선 `useYn=Y`(`A` 제외), 사용 중 노선의 `StationRoute.useYn=Y` 행만, `stationCnt`·`updnDir` 미사용, 정류장 1개 이하 노선 제외, `routeTp=53` 포함, 문자열 `"null"`은 값 없음, 좌표 유효 범위는 제주 본섬+추자도, **경도·위도 뒤바뀐 정류장은 보정하지 않고 `coordinates: unavailable`**
+6. 정적 스냅샷 생성 스크립트(D-01): `Station`·`Bus`·`StationRoute` 전체를 받아 위 규칙으로 가공한 JSON 생성, 크기 실측. 공개 배포 여부는 D-10 판정에 따름
 
 ## 수용 기준
 - 좌표 없는 정류장이 "좌표 있음" 타입으로 변환되지 않는다(테스트).
