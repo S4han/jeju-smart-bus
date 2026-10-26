@@ -43,6 +43,13 @@ describe("routeIntegrity", () => {
     });
     expect(r.issueExamples.activeRoutesWithoutMapping).toEqual(["R3"]);
   });
+
+  it("activeRowsOnly이면 useYn=N 매핑 행을 제외한다", () => {
+    const rows = [sr("R1", "1", 1), { ...sr("R1", "2", 2), useYn: "N" }, sr("R1", "1", 3)];
+    const only = routeIntegrity(stations, buses, rows, { activeRowsOnly: true });
+    expect(only.totals.activeMappingRows).toBe(2);
+    expect(only.issueCounts.ordGap).toBe(1);
+  });
 });
 
 describe("stations", () => {

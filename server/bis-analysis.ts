@@ -107,11 +107,20 @@ export function nearbyStationStats(stations: XmlRecord[]) {
 }
 
 // GATE-02·03: 노선별 정차 순서·방향·정류장 참조 정합성
-export function routeIntegrity(stations: XmlRecord[], buses: XmlRecord[], stationRoutes: XmlRecord[]) {
+// activeRowsOnly: 사용 중 노선 안에서도 useYn=Y 매핑 행만 본다(미사용 행이 섞여 생기는 불일치 확인용)
+export function routeIntegrity(
+  stations: XmlRecord[],
+  buses: XmlRecord[],
+  stationRoutes: XmlRecord[],
+  { activeRowsOnly = false } = {},
+) {
   const stationById = new Map(stations.map((s) => [s.stationId, s]));
   const busById = new Map(buses.map((b) => [b.routeId, b]));
   const rowsByRoute = new Map<string, XmlRecord[]>();
-  for (const r of stationRoutes) rowsByRoute.set(r.routeId, [...(rowsByRoute.get(r.routeId) ?? []), r]);
+  for (const r of stationRoutes) {
+    if (activeRowsOnly && r.useYn !== "Y") continue;
+    rowsByRoute.set(r.routeId, [...(rowsByRoute.get(r.routeId) ?? []), r]);
+  }
 
   const activeRouteIds = buses.filter((b) => b.useYn === "Y").map((b) => b.routeId);
   const issues = {

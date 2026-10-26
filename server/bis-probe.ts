@@ -46,7 +46,7 @@ export async function handleBisProbe(request: Request): Promise<Response> {
 
   const params = new URL(request.url).searchParams;
   const op = params.get("op") ?? "";
-  if (op === "Analysis") return handleAnalysis();
+  if (op === "Analysis") return handleAnalysis(params.get("activeRowsOnly") === "1");
   const allowed = OPERATIONS[op];
   if (!allowed) return errorResponse(400, { status: "invalid_input", code: "operation_not_allowed" });
 
@@ -115,7 +115,7 @@ export async function handleBisProbe(request: Request): Promise<Response> {
 }
 
 // TASK-006: Station·Bus·StationRoute 전체를 받아 정합성 분석 결과만 돌려준다(상류 호출 3회)
-async function handleAnalysis(): Promise<Response> {
+async function handleAnalysis(activeRowsOnly: boolean): Promise<Response> {
   const started = Date.now();
   const fetched: Record<string, ReturnType<typeof extractItems> & { bytes: number; resultCode: string | null }> = {};
   for (const op of ["Station", "Bus", "StationRoute"]) {
@@ -139,7 +139,8 @@ async function handleAnalysis(): Promise<Response> {
     ),
     stationRouteDates: stringRange(stationRoutes, "upd"),
     stationRouteUseYn: distinctValues(stationRoutes, "useYn"),
-    routes: routeIntegrity(stations, buses, stationRoutes),
+    activeRowsOnly,
+    routes: routeIntegrity(stations, buses, stationRoutes, { activeRowsOnly }),
     busFields: busFieldStats(buses),
     outOfRangeStations: outOfRangeStations(stations),
     nearby: nearbyStationStats(stations),
