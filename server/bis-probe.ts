@@ -1,6 +1,7 @@
 // 제주 BIS 실응답 검증용 임시 프로브 (TASK-005·006, GATE-01~04, U-006) — TASK-006 종료 후 삭제
 // 미리보기 배포에서만 동작한다. 응답 원문 대신 요약만 돌려주고, 로그를 남기지 않는다. 키는 보내지 않는다(D-25).
 
+import { buildSnapshot } from "../shared/bis-convert.js";
 import { busFieldStats, nearbyStationStats, outOfRangeStations, routeIntegrity } from "./bis-analysis.js";
 import { readServerEnv } from "./env.js";
 import { errorResponse, jsonResponse } from "./http.js";
@@ -47,6 +48,7 @@ export async function handleBisProbe(request: Request): Promise<Response> {
   const params = new URL(request.url).searchParams;
   const op = params.get("op") ?? "";
   if (op === "Analysis") return handleAnalysis(params.get("activeRowsOnly") === "1");
+  if (op === "SnapshotStats") return handleSnapshotStats();
   const allowed = OPERATIONS[op];
   if (!allowed) return errorResponse(400, { status: "invalid_input", code: "operation_not_allowed" });
 
@@ -114,10 +116,10 @@ export async function handleBisProbe(request: Request): Promise<Response> {
   });
 }
 
-// TASK-006: Station·Bus·StationRoute 전체를 받아 정합성 분석 결과만 돌려준다(상류 호출 3회)
-async function handleAnalysis(activeRowsOnly: boolean): Promise<Response> {
-  const started = Date.now();
-  const fetched: Record<string, ReturnType<typeof extractItems> & { bytes: number; resultCode: string | null }> = {};
+type Fetched = Record<string, ReturnType<typeof extractItems> & { bytes: number; resultCode: string | null }>;
+
+async function fetchAll(): Promise<Fetched | Response> {
+  const fetched: Fetched = {};
   for (const op of ["Station", "Bus", "StationRoute"]) {
     try {
       const res = await fetch(`${BASE_URL}${op}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
@@ -128,6 +130,14 @@ async function handleAnalysis(activeRowsOnly: boolean): Promise<Response> {
       return jsonResponse(502, { status: "unavailable", code: "upstream_unreachable", op, reason });
     }
   }
+  return fetched;
+}
+
+// TASK-006: Station·Bus·StationRoute 전체를 받아 정합성 분석 결과만 돌려준다(상류 호출 3회)
+async function handleAnalysis(activeRowsOnly: boolean): Promise<Response> {
+  const started = Date.now();
+  const fetched = await fetchAll();
+  if (fetched instanceof Response) return fetched;
   const stations = fetched.Station.records;
   const buses = fetched.Bus.records;
   const stationRoutes = fetched.StationRoute.records;
@@ -144,5 +154,30 @@ async function handleAnalysis(activeRowsOnly: boolean): Promise<Response> {
     busFields: busFieldStats(buses),
     outOfRangeStations: outOfRangeStations(stations),
     nearby: nearbyStationStats(stations),
+  });
+}
+
+// TASK-009: 가공 규칙(D-24·D-26)으로 정적 스냅샷을 만들어 크기·통계만 돌려준다(데이터 자체는 반환하지 않음 — D-10 미결)
+async function handleSnapshotStats(): Promise<Response> {
+  const started = Date.now();
+  const fetched = await fetchAll();
+  if (fetched instanceof Response) return fetched;
+  const { snapshot, stats } = buildSnapshot(
+    fetched.Station.records,
+    fetched.Bus.records,
+    fetched.StationRoute.records,
+    new Date().toISOString(),
+  );
+  const json = JSON.stringify(snapshot);
+  const gzipBytes = await new Response(
+    new Blob([json]).stream().pipeThrough(new CompressionStream("gzip")),
+  ).arrayBuffer().then((b) => b.byteLength);
+  return jsonResponse(200, {
+    op: "SnapshotStats",
+    durationMs: Date.now() - started,
+    sourceUpdatedAt: snapshot.sourceUpdatedAt,
+    stats,
+    size: { jsonBytes: new TextEncoder().encode(json).byteLength, gzipBytes },
+    sample: { stop: snapshot.stops[0] ?? null, route: snapshot.routes[0] ? { ...snapshot.routes[0], stopIds: snapshot.routes[0].stopIds.slice(0, 3) } : null },
   });
 }
