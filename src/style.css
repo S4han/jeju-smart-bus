@@ -212,3 +212,35 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 480px; margin: 0 auto; padding: 0 16px calc(96px + env(safe-area-inset-bottom)); }
 .sheet-body .map-caption { padding: 4px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 태블릿·PC·가로 휴대폰: 왼쪽 패널 + 오른쪽 지도(TASK-023). 패널과 지도가 겹치지 않아 NAVER 로고를 가리지 않는다 */
+.map-screen.is-side { --side-w: clamp(340px, 46vw, 440px); display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); }
+.side-panel { position: relative; display: flex; flex-direction: column; height: 100dvh; min-width: 0; background: var(--bg); border-right: 1px solid var(--line); }
+.side-header { flex: none; display: flex; align-items: center; height: 60px; padding: 0 20px; }
+.side-header h1 { font-size: 18px; font-weight: 700; }
+.side-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; padding: 0 16px calc(var(--cta-h) + 40px); }
+.side-body .map-caption { padding: 4px; }
+.is-side .map-stage { position: relative; top: auto; height: 100dvh; min-width: 0; }
+.is-side .cta-bar { right: auto; width: var(--side-w); padding-left: 16px; padding-right: 16px; }
+.is-side .cta-bar .route-search-button { max-width: none; }
+
+/* 지도 미동의 카드 화면: 넓은 화면에서는 폭을 조금 넓힌다 */
+@media (min-width: 768px) {
+  .app { max-width: 600px; }
+  .app .cta-bar .route-search-button { max-width: 568px; }
+  .hero-title { font-size: 30px; }
+}
+
+/* 마우스가 있는 기기(PC 등)에서 누를 수 있는 행을 표시 */
+@media (hover: hover) and (pointer: fine) {
+  .trip-row:hover, .nearby-list button:not(.is-selected):hover, .origin-results button:not(:disabled):hover { background: var(--fill); }
+  .sheet-handle:hover .sheet-grip { background: var(--text-3); }
+}
+
+/* 가로로 눕힌 휴대폰처럼 높이가 낮은 화면: 제목·하단 버튼을 줄여 내용 공간 확보 */
+@media (max-height: 500px) {
+  .side-header { height: 44px; }
+  .is-side .cta-bar { padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .is-side .cta-bar .route-search-button { min-height: 44px; font-size: 16px; }
+  .side-body { padding-bottom: 72px; }
+}
