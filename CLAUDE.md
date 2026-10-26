@@ -13,7 +13,7 @@
 
 ## 기술 스택 (현재)
 
-- React 19 + TypeScript 5.7 + Vite 6, `src/` 단일 컴포넌트 PoC
+- React 19 + TypeScript 5.7 + Vite 6. 화면은 아직 PoC(지도 모듈은 `src/map/`으로 분리됨)
 - 지도: NAVER Dynamic Map JS SDK v3 (`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=...`)
 - 배포: Vercel (Git 연동, `vercel.json` 없음)
 - 테스트: Vitest (`npm test`, `tests/`). 린트: 없음
@@ -25,7 +25,8 @@
 ```
 index.html            # lang="ko", #root
 src/main.tsx          # StrictMode로 <App/> 렌더
-src/App.tsx           # NAVER 지도 SDK 동적 로드 → 제주시 중심 지도 + 마커 (PoC)
+src/App.tsx           # PoC 화면: 제주시 중심 지도 + 마커, 상태 문구
+src/map/              # NAVER 지도 SDK 로더(1회 삽입·상태·인증 실패), 지도 컴포넌트, 마커 입력(좌표 확인된 항목만)
 src/style.css         # 기본 스타일, #map 높이 min(70vh,650px)
 src/vite-env.d.ts     # Vite 타입 참조
 api/arrivals.ts       # Vercel Function 진입점 → server/arrivals.ts
@@ -38,7 +39,7 @@ scripts/check-bundle-secrets.mjs  # build 마지막 단계: dist에 서버 비�
 
 ## 작업 시 주의
 
-- `src/App.tsx`의 지도 로딩·인증 오류 메시지 흐름은 동작이 확인된 PoC다. 리팩터링(TASK-010) 전에는 수정하지 않는다.
+- 지도 상태 문구는 `src/map/naverSdk.ts`의 `STATUS_MESSAGES`가 PoC 문구 그대로다(테스트로 고정). 바꾸려면 사용자 승인
 - `VITE_NAVER_MAP_CLIENT_ID`는 NAVER 지도 SDK 구조상 브라우저에 전달된다(도메인 제한 방식). D-17로 규칙 7의 예외가 승인되었다(2026-10-26). **그 외 모든 키는 서버 전용**이다.
 - 실제 외부 API 호출은 사용자가 허용한 검증 TASK(TASK-005~008)에서만 한다. 그 외에는 검증된 픽스처로 테스트한다.
 - 응답·로그 예시를 채팅이나 문서에 붙일 때 키·좌표 원문을 제거한다.

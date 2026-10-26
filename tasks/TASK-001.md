@@ -30,7 +30,7 @@
 - [x] `VITE_NAVER_MAP_CLIENT_ID` 미설정 시 "VITE_NAVER_MAP_CLIENT_ID 환경변수가 없습니다." 표시, 지도 SDK 요청 없음
 - [ ] 정상 Client ID·허용 URL에서 제주시 중심(33.4996, 126.5312) zoom 11 지도와 마커 표시
 - [ ] 지도 이동·확대/축소 동작
-- [ ] SDK 로드 실패 시 "지도 SDK 로딩 실패…" 메시지 표시
+- [x] SDK 로드 실패 시 "지도 SDK 로딩 실패…" 메시지 표시(TASK-010에서 SDK 요청 차단으로 확인)
 - [x] 상태 메시지가 `aria-live="polite"` 영역에 표시
 - [x] 모바일 폭(360px)에서 가로 스크롤 없음
 
