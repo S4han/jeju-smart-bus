@@ -1,4 +1,4 @@
-// 제주 BIS 실응답 검증용 임시 프로브 (TASK-005·006, GATE-01~04, U-006) — TASK-006 종료 후 삭제
+// 제주 BIS 실응답 검증용 임시 프로브 (TASK-005·006·007, GATE-01~05, U-006) — 검증 TASK 종료 후 삭제
 // 미리보기 배포에서만 동작한다. 응답 원문 대신 요약만 돌려주고, 로그를 남기지 않는다. 키는 보내지 않는다(D-25).
 
 import { buildSnapshot } from "../shared/bis-convert.js";
@@ -28,7 +28,12 @@ const OPERATIONS: Record<string, ReadonlyArray<string>> = {
   StationRoute: ["last"],
   BusArrives: ["station"],
   BusInfo: ["route"],
+  // TASK-007(GATE-05): 구간 이동시간 근거 확인용
+  BusArriveList: ["route", "from", "to"],
+  BusArriveInfo: ["route", "station"],
 };
+// 구간 분석에 행 전체가 필요한 오퍼레이션(차량·정류장 ID와 예측 분만 — 좌표·개인정보 없음)
+const FULL_ROW_OPS = new Set(["BusArriveList", "BusArriveInfo"]);
 const PAGING = ["pageNo", "numOfRows"];
 const PARAM_VALUE = /^[A-Za-z0-9 :_-]{0,32}$/;
 
@@ -52,7 +57,7 @@ export async function handleBisProbe(request: Request): Promise<Response> {
   const allowed = OPERATIONS[op];
   if (!allowed) return errorResponse(400, { status: "invalid_input", code: "operation_not_allowed" });
 
-  const sampleSize = Math.min(Math.max(Number(params.get("sample") ?? 3) || 0, 0), 5);
+  const sampleSize = Math.min(Math.max(Number(params.get("sample") ?? 3) || 0, 0), FULL_ROW_OPS.has(op) ? 200 : 5);
   // 샘플만 사용 중(useYn=Y) 항목으로 좁힐 때 사용. 통계는 전체 기준
   const sampleInUse = params.get("sampleInUse") === "1";
 
