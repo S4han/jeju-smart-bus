@@ -332,7 +332,7 @@
 | TASK-002 | **1차 설계 검증 완료** — PRIV-001·003 통과(설계), PRIV-002 조건부(Vercel 로그 보존 기간 확인), PRIV-004 부분 보류. `docs/verification/PRIV-001-004.md` |
 | TASK-003 | **1차 조사 완료, 판정 미완료** — `docs/verification/GATE-06.md` §4 사용자 확인 대기 |
 | TASK-004~007 | 미착수 |
-| TASK-008 | **1차 비교 완료(A안), 사용자 선정 대기** — `docs/verification/U-001-place-search.md` |
+| TASK-008 | **비교 완료(A안 + NAVER 검색 API 보강), 사용자 선정 대기** — `docs/verification/U-001-place-search.md` |
 | TASK-009~020 | 미착수 |
 
 ### 결정 기록
