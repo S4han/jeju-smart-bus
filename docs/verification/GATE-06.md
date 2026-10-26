@@ -30,7 +30,7 @@
 | 공공데이터포털 API (제주·TAGO) | 정류장·노선·도착 | 무료 | 오류 코드 22·23 반환(과금 없음) | **사용 가능 후보** — 단 LINK 연계처 조건 미확인 | A |
 | 제주 버스 LINK 연계 API (15058442 등) | 정류장·노선·순번·위치 | 포털 표기 "무료" | 미확인 | **조건부** — 연계처 약관·한도·인증 확인 필요 | A(포털), C(연계처) |
 | NAVER Cloud Maps (Web Dynamic Map) | 지도 표시(PoC 사용 중) | **신규 Maps 상품: 대표 계정 1개 한정 월 6,000,000건 무료.** 구 AI NAVER API 지도: 무료 없음(100% 유료) | 초과 단가·한도 차단 여부 미확인 | **조건부** — 상품 종류·대표 계정·한도 차단 확인 필요 | A(요금·공지), C(한도 차단) |
-| Vercel Hobby | 호스팅·서버 함수 | 무료 플랜, 초과 과금 없음(요약) | 기능 일시 정지 | **조건부** — 플랜·비상업 이용 확인 필요 | B |
+| Vercel Hobby | 호스팅·서버 함수 | 무료 플랜, **청구 주기·초과 과금 없음** | 대부분 30일 경과까지 해당 기능 사용 불가 | **조건부** — 팀 요금제가 Hobby인지, 비상업 이용 해당 여부 사용자 확인 | A |
 | Kakao 로컬(키워드 검색)·도보 경로 | 장소 검색·도보시간 후보 | 무료 쿼터 + 선택적 유료 | 429 오류(유료 설정 안 하면) | **사용 가능 후보** — 조건 §3.4 | A |
 | NAVER 검색 API(지역) | 장소 검색 후보 | 신규는 NAVER API HUB 경유. HUB 요금표: **검색 API 0~775,000건 0원, 일 최대 25,000건 호출 제한** | 일 한도 초과 시 429(개발자센터 문서). HUB 종량제·임계치 설정 기능 있음 | **조건부(유력)** — 일 한도가 무료 구간 안에 머무는 구조. 콘솔에서 초과 과금 여부 확인 | A |
 | 행정안전부 도로명주소 API | 주소 검색 후보 | 미확인 | 미확인 | 미확인 | C |
@@ -74,20 +74,22 @@
 - D-15 판단 기준 ①(무료 적용)은 "신규 Maps + 대표 계정"이면 충족. ②(한도 도달 시 차단)는 **미확인**.
 - 참고: NCP Directions는 도보 경로가 아니므로 D-06(도보시간) 후보가 아님(상품명 기준, 상세 미확인).
 
-### 3.3 Vercel Hobby (근거 B — 원문 미열람)
+### 3.3 Vercel Hobby (근거 A — 2차 조사 2026-10-26, `vercel.com` 허용 후 원문 열람)
 
-검색 요약 기준([Hobby 플랜](https://vercel.com/docs/plans/hobby), [Fair use](https://vercel.com/docs/limits/fair-use-guidelines)):
-- Hobby는 **비상업·개인 용도 한정**. 상업적 이용 정의가 넓음: 프로젝트 제작에 관여한 누구든 금전적 이득을 얻는 경우 포함(**유급 직원·컨설턴트가 코드를 작성하는 경우 포함**), 결제 수령, 제품·서비스 광고, 광고 게재. 기부 요청은 상업적 이용 아님.
-- Hobby는 **청구 주기·초과 과금 없음**. 한도 초과 시 대부분 기능이 30일 경과 후까지 정지. (Pro는 초과 사용 자동 과금)
-- 수치(함수 호출 수·전송량 등)는 원문 미열람으로 기록하지 않음.
+출처: [Hobby 플랜](https://vercel.com/docs/plans/hobby), [Fair use guidelines](https://vercel.com/docs/limits/fair-use-guidelines), [Limits](https://vercel.com/docs/limits), [Runtime logs](https://vercel.com/docs/logs/runtime)
 
-계정 확인(Vercel API 조회, 읽기만):
-- 프로젝트 `jeju-smart-bus`, Node `24.x`, 도메인 `jeju-smart-bus-psi.vercel.app`, 미리보기 배포 SSO 보호 활성.
-- 팀 `splendid3`의 **요금제(Hobby/Pro)는 API 응답에 나타나지 않아 미확인**.
+| 항목 | 원문 |
+|---|---|
+| 과금 | "As the Hobby plan is a free tier there are no billing cycles. In most cases, if you exceed your usage limits on the Hobby plan, you will have to wait until 30 days have passed before you can use the feature again." |
+| 이용 범위 | "the Hobby plan restricts users to non-commercial, personal use only." |
+| 상업적 이용 정의 | "Commercial usage is defined as any Deployment that is used for the purpose of financial gain of anyone involved in any part of the production of the project, including **a paid employee or consultant writing the code**." 예: 제품·서비스 판매 광고, 광고(AdSense 등) 게재. "Asking for Donations" 는 상업적 이용 아님 |
+| 포함 사용량(월) | Function Invocations 1,000,000 / CDN Requests 1,000,000 / Fast Data Transfer 100 GB / Fast Origin Transfer 10 GB / Active CPU 4 CPU-hrs / Provisioned Memory 360 GB-hrs |
+| 로그 보존 | "Build logs are stored indefinitely for each deployment. **Runtime logs are stored for 1 hour on Hobby**, 1 day on Pro, and for 3 days on Enterprise accounts." |
+| 런타임 로그 항목 | Request Path("the actual URL path requested by users"), Request Method, Status, Request Id 등. 쿼리스트링 포함 여부는 문서에 명시 없음 → 포함될 수 있다고 보고 설계(PRIV-002 규칙 유지) |
 
-추가 주의:
-- Vercel Marketplace 연동(Blob, KV/Redis, DB 등)은 별도 과금 가능 → 도입 금지(AGENTS.md 규칙 4).
-- 런타임 로그는 요청 경로(`requestPath`) 단위로 조회·집계됨(Vercel MCP `get_runtime_logs` 문서) → 좌표를 URL에 넣지 않는 규칙(PRIV-002)의 근거.
+계정 확인(Vercel API 조회, 읽기만): 프로젝트 `jeju-smart-bus`, Node `24.x`, 도메인 `jeju-smart-bus-psi.vercel.app`, 미리보기 배포 SSO 보호 활성. 팀 `splendid3`의 **요금제는 API 응답에 없어 미확인**.
+
+판정: Hobby이면 구조상 과금이 발생하지 않는다(초과 시 기능 정지 — FR-017 장애 대응 대상). **남은 조건은 ① 팀 요금제가 Hobby인지 ② 비상업 이용인지(유급 업무로 개발하면 상업적 이용).** Marketplace 연동(Blob·KV·DB)은 별도 과금 가능 → 도입 금지.
 
 ### 3.4 Kakao 로컬·도보 경로 (근거 A)
 
@@ -122,7 +124,7 @@ NAVER 검색 API(지역): `developers.naver.com` 허용 후 원문 열람 — �
 | 1 | NAVER Cloud: 사용 중인 상품이 **신규 Maps**인지(구 AI NAVER API면 100% 유료), **대표 계정**인지, 이번 달 Maps 이용 요금이 0원인지 | NCP 콘솔 > Services > Maps / 비용 관리 | **즉시** |
 | 2 | NAVER Cloud: 이용 한도 설정 기능이 한도 도달 시 호출을 **차단**하는지(통보만인지), 설정 가능 여부 — 가이드가 자동 접근을 거부해 사용자 확인만 가능 | NCP 콘솔 > Maps > 이용 한도 설정 | 높음 |
 | 3 | NAVER Cloud: 결제수단 등록 여부 | NCP 콘솔 > 결제 | 높음 |
-| 4 | Vercel 팀 `splendid3` 요금제가 Hobby인지, 결제수단·Marketplace 연동 유무 | Vercel 대시보드 > Settings > Billing | 높음 |
+| 4 | Vercel 팀 `splendid3` 요금제가 Hobby인지, 결제수단·Marketplace 연동 유무 (로그 보존 1시간은 원문 확인 완료) | Vercel 대시보드 > Settings > Billing | 높음 |
 | 5 | 이 서비스가 Vercel 기준 **비상업** 이용에 해당하는지(업무·유급 개발·광고·수익 여부) | 사용자 판단 | 높음 |
 | 6 | Kakao Developers 사용 시: 첫 번째 활성화 앱인지, 비즈월렛 미연결 유지 | Kakao Developers 콘솔 | 공급자 선택 시 |
 | 7 | 공공데이터포털 제주 LINK API 활용신청 후 안내되는 실제 호출처·한도 | 활용신청 후 마이페이지 | TASK-005 전 |
