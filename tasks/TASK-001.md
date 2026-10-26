@@ -12,7 +12,7 @@
 
 ## 선행 조건
 - [ ] IMPLEMENTATION_PLAN.md 승인
-- [ ] D-08(개발 의존성 도입 범위) 승인
+- [x] D-08 승인(2026-10-26): Vitest + lockfile + `engines`. ESLint·Testing Library 제외
 
 ## 범위
 - 포함: lockfile 커밋, Node 버전 명시(`engines` 또는 `.nvmrc`), `*.tsbuildinfo` gitignore 추가, 승인된 테스트 도구(예: Vitest) 설치와 `test` 스크립트, PoC 회귀 체크리스트 작성
@@ -22,7 +22,7 @@
 1. `npm install`로 lockfile 생성·커밋 (의존성 버전 범위는 변경하지 않음)
 2. Node 버전 고정 — Vercel 프로젝트의 Node 설정과 일치하는지 사용자 확인
 3. `.gitignore`에 `*.tsbuildinfo` 추가
-4. 승인된 테스트 도구 설치, `npm test` 스크립트 추가, 샘플 테스트 1개(순수 함수)로 동작 확인
+4. Vitest 설치, `npm test` 스크립트 추가, 샘플 테스트 1개(순수 함수)로 동작 확인
 5. 아래 **PoC 회귀 체크리스트**를 이 문서에 확정
 
 ## PoC 회귀 체크리스트 (이후 모든 지도 관련 변경에 적용)
