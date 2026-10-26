@@ -34,17 +34,21 @@ export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onS
             <ol className="nearby-list" ref={listRef}>
               {state.stops.map(({ stop, distanceMeters }) => {
                 const selected = stop.id === selectedId;
-                const meta = (
-                  <span className="nearby-meta">
-                    {formatDistance(distanceMeters)} · 정류장 번호 {stop.id}
-                    {selected && " · 선택됨"}
+                const main = (
+                  <span className="row-main">
+                    <span className="nearby-name">{stop.name}</span>
+                    <span className="nearby-meta">
+                      정류장 번호 {stop.id}
+                      {selected && " · 선택됨"}
+                    </span>
                   </span>
                 );
+                const distance = <span className="row-side">{formatDistance(distanceMeters)}</span>;
                 if (!onSelect) {
                   return (
                     <li key={stop.id} className="nearby-static">
-                      <span className="nearby-name">{stop.name}</span>
-                      {meta}
+                      {main}
+                      {distance}
                     </li>
                   );
                 }
@@ -57,8 +61,11 @@ export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onS
                       className={selected ? "is-selected" : undefined}
                       onClick={() => onSelect(stop.id)}
                     >
-                      <span className="nearby-name">{stop.name}</span>
-                      {meta}
+                      {main}
+                      {distance}
+                      <span className="row-chevron" aria-hidden="true">
+                        ›
+                      </span>
                     </button>
                   </li>
                 );

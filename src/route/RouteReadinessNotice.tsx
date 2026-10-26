@@ -35,7 +35,7 @@ export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, .
             있습니다.
           </p>
         ) : (
-          <ul>
+          <ul className="readiness-list">
             {readiness.missing.length > 0 && <li>{names(readiness.missing)}를 정해 주세요.</li>}
             {readiness.needsConsent.length > 0 && (
               <li>{names(readiness.needsConsent)} 반경 500m 안에 정류장이 없습니다. 위의 안내에서 1km까지 넓힐지 정해 주세요.</li>
@@ -49,9 +49,11 @@ export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, .
         )}
         {result && <SearchResults result={result} {...rest} />}
       </div>
-      <button type="button" className="route-search-button" disabled={!canSearch} onClick={onSearch}>
-        경로 찾기
-      </button>
+      <div className="cta-bar">
+        <button type="button" className="route-search-button" disabled={!canSearch} onClick={onSearch}>
+          경로 찾기
+        </button>
+      </div>
     </section>
   );
 }
@@ -132,19 +134,36 @@ function JourneyItem({ ranked, section, routesById, stopsById, selectedJourneyId
   const name = (id: StopId) => stopsById.get(id)?.name ?? `정류장 번호 ${id} (이름 확인 불가)`;
   return (
     <li className={selected ? "route-item is-selected" : "route-item"}>
-      <p className="route-item-head">
+      <p className={totalTime ? "route-time" : "route-time is-unknown"}>
+        {totalTime ? (
+          <>
+            {totalTime.minutes}분<small>{totalTime.estimated ? "추정 포함 · 실시간 예측" : "실시간 예측"}</small>
+          </>
+        ) : (
+          "소요시간 미확인"
+        )}
+      </p>
+      <div className="route-buses">
         <span className="route-badge">{journey.transfers === 0 ? "직행" : `환승 ${journey.transfers}회`}</span>
-        {routeLabel(routesById, journey)}
+        {journey.legs.map((l, i) => (
+          <span key={`${l.routeId}-${i}`} className="route-leg">
+            {i > 0 && (
+              <span className="bus-arrow" aria-label="환승">
+                →
+              </span>
+            )}
+            <span className="bus-pill">{routesById.get(l.routeId)?.name ?? `노선 ${l.routeId}`}</span>
+          </span>
+        ))}
+      </div>
+      <p className="route-meta">
+        {name(first.boardStopId)} 승차 · {name(last.alightStopId)} 하차
       </p>
       <p className="route-meta">
-        승차 {name(first.boardStopId)} · 하차 {name(last.alightStopId)}
-      </p>
-      <p className="route-meta">
-        {totalTime ? `총 ${totalTime.minutes}분${totalTime.estimated ? " (추정 포함)" : ""} · 실시간 예측` : "총 소요시간 미확인"} · 걷기(직선) 출발{" "}
-        {formatDistance(journey.originWalkMeters)} · 도착 {formatDistance(journey.destinationWalkMeters)}
+        걷기(직선) 출발 {formatDistance(journey.originWalkMeters)} · 도착 {formatDistance(journey.destinationWalkMeters)}
       </p>
       <button type="button" className="link-button" aria-expanded={selected} onClick={() => onSelectJourney(selected ? null : journey.id)}>
-        {selected ? "상세 닫기" : "상세 안내·지도 표시"}
+        {selected ? "상세 닫기" : "상세 안내·지도 표시 ›"}
       </button>
       {selected && (
         <>
@@ -171,7 +190,7 @@ function StepList({ steps }: { steps: Step[] }) {
           case "board":
             if (i === 1) number++;
             return (
-              <li key={i}>
+              <li key={i} className="is-bus">
                 {i === 1 && <span className="route-step-num">{number}</span>}
                 {stopLabel(step.stop)}에서 {step.routeName ?? `노선 ${step.routeId}`} 승차
                 {step.towards && ` (${stopLabel(step.towards)} 방면)`} — {step.stopsToRide}개 정류장 이동
@@ -180,7 +199,7 @@ function StepList({ steps }: { steps: Step[] }) {
           case "transfer":
             number++;
             return (
-              <li key={i}>
+              <li key={i} className="is-bus">
                 <span className="route-step-num">{number}</span>
                 {stopLabel(step.stop)}에서 내려 같은 정류장에서 환승
               </li>
@@ -188,7 +207,7 @@ function StepList({ steps }: { steps: Step[] }) {
           case "alight":
             number++;
             return (
-              <li key={i}>
+              <li key={i} className="is-bus">
                 <span className="route-step-num">{number}</span>
                 {stopLabel(step.stop)}에서 하차
               </li>
