@@ -1,0 +1,7 @@
+[
+  {"routeDist":"0","routeId":"405320114","stationId":"406001256","stationOrd":"1","upd":"2026-10-24 14:14:17","updnDir":"0","useYn":"Y","waypointOrd":"1"},
+  {"routeDist":"190","routeId":"405320114","stationId":"406000143","stationOrd":"2","upd":"2026-10-24 14:14:17","updnDir":"0","useYn":"Y","waypointOrd":"4"},
+  {"routeDist":"0","routeId":"405502001","stationId":"405000208","stationOrd":"1","upd":"2017-08-25 01:23:47","updnDir":"0","useYn":"N","waypointOrd":"1"},
+  {"routeDist":"314","routeId":"405502001","stationId":"405000210","stationOrd":"2","upd":"2017-08-25 01:23:47","updnDir":"0","useYn":"N","waypointOrd":"3"},
+  {"routeDist":"648","routeId":"405502001","stationId":"405000212","stationOrd":"3","upd":"2017-08-25 01:23:47","updnDir":"0","useYn":"N","waypointOrd":"5"}
+]

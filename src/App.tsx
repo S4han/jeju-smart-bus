@@ -1,27 +1,215 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SNAPSHOT_PATH } from "../shared/sources";
+import type { Coordinates } from "../shared/domain";
+import { createHttpSnapshotSource } from "./data/httpSnapshotSource";
+import { DataAttribution } from "./data/DataAttribution";
+import { createHttpArrivalSource } from "./data/httpArrivalSource";
+import { ArrivalPanel } from "./arrivals/ArrivalPanel";
+import { useArrivals } from "./arrivals/useArrivals";
+import { MapConsentPanel } from "./map/MapConsentPanel";
+import { NaverMap } from "./map/NaverMap";
+import { STATUS_MESSAGES } from "./map/naverSdk";
+import { useMapConsent } from "./map/useMapConsent";
+import { useNaverMaps } from "./map/useNaverMaps";
+import { OriginPanel } from "./origin/OriginPanel";
+import { originFromMapPoint, type Origin } from "./origin/origin";
+import { useCurrentLocation } from "./origin/useCurrentLocation";
+import { useStopNames } from "./origin/useStopNames";
+import { NearbyStops } from "./stops/NearbyStops";
+import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
+import { stepPoints } from "./route/steps";
+import { useNearbyStops } from "./stops/useNearbyStops";
+import { DestinationPanel } from "./destination/DestinationPanel";
+import { routeReadiness, type EndpointKey } from "./route/candidates";
+import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
+import { useRouteSearch } from "./route/useRouteSearch";
+import { useJourneyTimes } from "./route/useJourneyTimes";
+import { impactNotice, type Cause, type Service } from "./service/impact";
+import { ServiceNotices } from "./service/ServiceNotices";
 
-declare global { interface Window { naver?: any } }
+// 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 동의 후 지도 동작·문구는 PoC와 같다(TASK-010)
 const JEJU = { lat: 33.4996, lng: 126.5312 };
+const POC_ITEMS = [{ id: "jeju-city", title: "제주시", coordinates: JEJU }];
+
+// 정류장·노선 정적 스냅샷(D-01, D-10 (A) 승인) — 빌드 때 생성된 공개 데이터 파일
+const SNAPSHOT_SOURCE = createHttpSnapshotSource(`${import.meta.env.BASE_URL}${SNAPSHOT_PATH}`);
+
+// 도착정보는 정류장 ID만 서버로 보낸다(TASK-014, D-22)
+const ARRIVAL_SOURCE = createHttpArrivalSource();
+
 export default function App() {
-  const mapDiv = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState("지도 SDK 로딩 중...");
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID;
-    if (!clientId) { setStatus("VITE_NAVER_MAP_CLIENT_ID 환경변수가 없습니다."); return; }
-    const script = document.createElement("script");
-    script.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" + encodeURIComponent(clientId);
-    script.async = true;
-    script.onload = () => {
-      if (!window.naver?.maps || !mapDiv.current) { setStatus("지도 SDK 초기화 실패: 인증 정보와 허용 URL을 확인하세요."); return; }
-      const naver = window.naver;
-      const center = new naver.maps.LatLng(JEJU.lat, JEJU.lng);
-      const map = new naver.maps.Map(mapDiv.current, { center, zoom: 11 });
-      new naver.maps.Marker({ position: center, map, title: "제주시" });
-      setStatus("제주 지도 표시 완료 · 이동 및 확대/축소를 테스트하세요.");
-    };
-    script.onerror = () => setStatus("지도 SDK 로딩 실패: Client ID 및 Web 서비스 URL을 확인하세요.");
-    document.head.appendChild(script);
-    return () => { script.remove(); };
-  }, []);
-  return <main><h1>제주 스마트 버스</h1><p>네이버 Dynamic Map 연결 테스트</p><div id="map" ref={mapDiv} role="region" aria-label="제주 지도"/><p aria-live="polite">{status}</p></main>;
+  const consent = useMapConsent();
+  const granted = consent.state === "granted";
+  const { status, maps } = useNaverMaps(import.meta.env.VITE_NAVER_MAP_CLIENT_ID, granted);
+
+  // 출발지 좌표는 이 메모리 상태로만 둔다 — URL·저장소·서버로 보내지 않는다(TASK-011, PRIV-001~003)
+  const [origin, setOrigin] = useState<Origin | null>(null);
+  const [destination, setDestination] = useState<Origin | null>(null);
+  // 지도 직접 지정 대상(출발지·목적지 중 하나만)
+  const [pickTarget, setPickTarget] = useState<EndpointKey | null>(null);
+  const location = useCurrentLocation();
+  const stopList = useStopNames(SNAPSHOT_SOURCE);
+  const mapPickAvailable = granted && status === "ready";
+
+  const handleMapClick = useCallback(
+    (coordinates: Coordinates) => {
+      if (pickTarget === "origin") setOrigin(originFromMapPoint(coordinates));
+      if (pickTarget === "destination") setDestination(originFromMapPoint(coordinates));
+      setPickTarget(null);
+    },
+    [pickTarget],
+  );
+
+  // 지도와 목록은 같은 결과 상태를 쓴다(TASK-013, AC-004)
+  const stops = stopList.status === "ready" ? stopList.stops : null;
+  const stopsById = useMemo(() => new Map((stops ?? []).map((s) => [s.id, s] as const)), [stops]);
+  const nearby = useNearbyStops(stops, origin?.coordinates ?? null);
+  // 목적지 후보 정류장 — 출발지와 따로 찾고 확대 동의도 따로 받는다(TASK-015, AC-007)
+  const destinationNearby = useNearbyStops(stops, destination?.coordinates ?? null);
+  const readiness = useMemo(
+    () => routeReadiness({ origin: nearby.state, destination: destinationNearby.state }),
+    [nearby.state, destinationNearby.state],
+  );
+  const routeSearch = useRouteSearch(stops, stopList.status === "ready" ? stopList.routes : null, readiness);
+  // 상세를 연 경로 — 지도에 승차·환승·하차 단계 번호를 표시(TASK-018, D-16)
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
+  useEffect(() => setSelectedJourneyId(null), [routeSearch.result]);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  useEffect(() => setSelectedStopId(null), [nearby.state]);
+
+  // 출발지·목적지 전에는 PoC 화면 그대로(제주시 마커), 정해지면 출발지·목적지·출발지 주변 정류장만
+  const hasPlace = origin !== null || destination !== null;
+  const selectedPoints = useMemo(() => {
+    const journey = routeSearch.result?.status === "ok" ? routeSearch.result.journeys.find((j) => j.id === selectedJourneyId) : undefined;
+    return journey ? stepPoints(journey, stopsById) : null;
+  }, [routeSearch.result, selectedJourneyId, stopsById]);
+  const items = useMemo(() => {
+    if (!hasPlace) return POC_ITEMS;
+    const o = origin?.coordinates ?? null;
+    const d = destination?.coordinates ?? null;
+    return selectedPoints ? journeyMapItems(selectedPoints, o, d) : nearbyMapItems(nearby.state, o, d);
+  }, [hasPlace, selectedPoints, nearby.state, origin, destination]);
+  const fitBounds = useMemo(
+    () =>
+      hasPlace
+        ? boundsOf([
+            ...(origin ? [origin.coordinates] : []),
+            ...(destination ? [destination.coordinates] : []),
+            ...(selectedPoints
+              ? selectedPoints.flatMap((p) => (p.stop.coordinates ? [p.stop.coordinates] : []))
+              : nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)),
+          ])
+        : null,
+    [hasPlace, origin, destination, nearby.state, selectedPoints],
+  );
+  const selectedStop = useMemo(
+    () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
+    [nearby.state, selectedStopId],
+  );
+  const routesById = useMemo(
+    () => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []),
+    [stopList],
+  );
+  // 결과 상위 경로의 노선 실시간 예측으로 총 소요시간 계산(TASK-017, GATE-05, D-30)
+  const journeyTimes = useJourneyTimes(ARRIVAL_SOURCE, routeSearch.result, routesById);
+  const arrivals = useArrivals(ARRIVAL_SOURCE, selectedStop?.id ?? null);
+
+  const handleMarkerSelect = useCallback(
+    (id: string) => {
+      if (nearbyStopsOf(nearby.state).some((n) => n.stop.id === id)) setSelectedStopId(id);
+    },
+    [nearby.state],
+  );
+
+  // 서비스 장애 영향 안내(TASK-019). 지도는 동의한 경우에만 대상, 도착정보 장애는 도착정보 영역에서도 안내
+  const notices = useMemo(() => {
+    const down: Array<[Service, Cause]> = [];
+    if (granted && (status === "init_failed" || status === "load_failed" || status === "missing_client_id")) down.push(["naver_maps", "unavailable"]);
+    if (stopList.status === "unavailable") down.push(["snapshot", "unavailable"]);
+    const arrivalCause = arrivals.state.status;
+    if (arrivalCause === "unavailable" || arrivalCause === "rate_limited" || arrivalCause === "quota_exhausted" || arrivalCause === "inconsistent")
+      down.push(["bus_arrivals", arrivalCause]);
+    const services = down.map(([svc]) => svc);
+    return down.map(([svc, cause]) => impactNotice(svc, cause, services));
+  }, [granted, status, stopList.status, arrivals.state.status]);
+
+  return (
+    <main>
+      <h1>제주 스마트 버스</h1>
+      <p>네이버 Dynamic Map 연결 테스트</p>
+      <ServiceNotices notices={notices} />
+      {consent.state === "granted" ? (
+        <>
+          <NaverMap
+            maps={maps}
+            center={JEJU}
+            zoom={11}
+            items={items}
+            selectedId={selectedStopId}
+            onSelect={handleMarkerSelect}
+            fitBounds={fitBounds}
+            onMapClick={pickTarget ? handleMapClick : undefined}
+            ariaLabel="제주 지도"
+          />
+          <p aria-live="polite">{STATUS_MESSAGES[status]}</p>
+          <button type="button" className="link-button" onClick={consent.revoke}>
+            지도 이용 동의 철회
+          </button>
+        </>
+      ) : (
+        <MapConsentPanel state={consent.state} onGrant={consent.grant} onDecline={consent.decline} />
+      )}
+      <OriginPanel
+        origin={origin}
+        onChange={setOrigin}
+        location={location.state}
+        onRequestLocation={location.request}
+        stopList={stopList}
+        mapPickAvailable={mapPickAvailable}
+        picking={pickTarget === "origin" && mapPickAvailable}
+        onPickingChange={(on) => setPickTarget(on ? "origin" : null)}
+      />
+      {nearby.state && (
+        <NearbyStops
+          state={nearby.state}
+          onExpand={nearby.expand}
+          onDecline={nearby.decline}
+          selectedId={selectedStopId}
+          onSelect={setSelectedStopId}
+        />
+      )}
+      {selectedStop && (
+        <ArrivalPanel stop={selectedStop} state={arrivals.state} routesById={routesById} onRefresh={arrivals.refresh} />
+      )}
+      <DestinationPanel
+        destination={destination}
+        onChange={setDestination}
+        stopList={stopList}
+        mapPickAvailable={mapPickAvailable}
+        picking={pickTarget === "destination" && mapPickAvailable}
+        onPickingChange={(on) => setPickTarget(on ? "destination" : null)}
+      />
+      {destinationNearby.state && (
+        <NearbyStops
+          state={destinationNearby.state}
+          onExpand={destinationNearby.expand}
+          onDecline={destinationNearby.decline}
+          placeLabel="목적지"
+        />
+      )}
+      <RouteReadinessNotice
+        readiness={readiness}
+        canSearch={routeSearch.canSearch}
+        onSearch={routeSearch.search}
+        result={routeSearch.result}
+        routesById={routesById}
+        stopsById={stopsById}
+        selectedJourneyId={selectedJourneyId}
+        onSelectJourney={setSelectedJourneyId}
+        estimator={journeyTimes.estimator}
+        timing={journeyTimes.state}
+      />
+      <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
+    </main>
+  );
 }
