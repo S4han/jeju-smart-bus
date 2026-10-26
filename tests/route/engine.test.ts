@@ -15,7 +15,7 @@ describe("직행 (AC-008)", () => {
   const R = route("R1", ["S1", "S2", "S3", "S4"]);
 
   it("정방향(승차 순번 < 하차 순번)만 직행", () => {
-    expect(ids(search([R], [at("S1")], [at("S3")]))).toEqual(["R1:1-3"]);
+    expect(ids(search([R], [at("S1")], [at("S3")]))).toEqual(["R1:S1>S3"]);
   });
 
   it("역방향은 제외 → 경로 없음", () => {
@@ -24,7 +24,7 @@ describe("직행 (AC-008)", () => {
 
   it("방향이 다른 노선(다른 routeId)은 각자의 순서로만 판단", () => {
     const back = route("R1b", ["S4", "S3", "S2", "S1"]);
-    expect(ids(search([R, back], [at("S3")], [at("S1")]))).toEqual(["R1b:2-4"]);
+    expect(ids(search([R, back], [at("S3")], [at("S1")]))).toEqual(["R1b:S3>S1"]);
   });
 });
 
@@ -34,12 +34,12 @@ describe("순환·반복 정류장 (D-21)", () => {
     // S4에서 S2로 가려면 끝(S1)을 지나 처음으로 넘어가야 함
     expect(search([loop], [at("S4")], [at("S2")]).status).toBe("empty");
     // S4 → S1(마지막 순번)은 정방향
-    expect(ids(search([loop], [at("S4")], [at("S1")]))).toEqual(["L:4-5"]);
+    expect(ids(search([loop], [at("S4")], [at("S1")]))).toEqual(["L:S4>S1"]);
   });
 
   it("같은 정류장이 두 순번에 있으면 순번 차이가 가장 작은 조합 하나만", () => {
     const r = route("R", ["S1", "S2", "S3", "S1", "S5", "S6"]);
-    expect(ids(search([r], [at("S1")], [at("S6")]))).toEqual(["R:4-6"]);
+    expect(ids(search([r], [at("S1")], [at("S6")]))).toEqual(["R:S1>S6"]);
   });
 });
 
@@ -51,7 +51,7 @@ describe("환승 (AC-009, D-19)", () => {
 
   it("1회 환승: 같은 정류장 ID에서만", () => {
     const r = search([A, B], [at("S1")], [at("S5")]);
-    expect(ids(r)).toEqual(["A:1-3|B:1-3"]);
+    expect(ids(r)).toEqual(["A:S1>S3|B:S3>S5"]);
     expect(journeys(r)[0].legs[0].alightStopId).toBe(journeys(r)[0].legs[1].boardStopId);
   });
 
@@ -62,7 +62,7 @@ describe("환승 (AC-009, D-19)", () => {
 
   it("2회 환승 경로: 각 구간이 정방향이고 환승 정류장이 이어진다", () => {
     const j = journeys(search([A, B, C], [at("S1")], [at("S7")]));
-    expect(j.map((x) => x.id)).toEqual(["A:1-3|B:1-3|C:1-3"]);
+    expect(j.map((x) => x.id)).toEqual(["A:S1>S3|B:S3>S5|C:S5>S7"]);
     expect(j[0].transfers).toBe(2);
   });
 
@@ -90,7 +90,7 @@ describe("결과 정리·결정성", () => {
   it("같은 노선 조합은 대표 하나(걷기 → 탄 정류장 수), 환승 적은 순·걷기 짧은 순", () => {
     const r = search([A, A2, B], [at("S1", 300), at("S2", 100), at("S11", 50)], [at("S4", 80)]);
     const j = journeys(r);
-    expect(j.map((x) => x.id)).toEqual(["A2:1-4", "A:2-4", "B:1-3"]);
+    expect(j.map((x) => x.id)).toEqual(["A2:S11>S4", "A:S2>S4", "B:S2>S4"]);
     expect(j.map((x) => x.walkMeters)).toEqual([130, 180, 180]);
   });
 

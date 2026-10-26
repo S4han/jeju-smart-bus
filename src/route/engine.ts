@@ -9,10 +9,10 @@ import type { Route, RouteId, StopId } from "../../shared/domain";
 
 export const MAX_TRANSFERS = 2;
 // 같은 노선 조합(예: 노선 A → 노선 B)에서 대표 경로 하나만 남긴다. 대표 선택 기준: 걷는 거리 합 → 탄 정류장 수 합 → 식별자
-// 환승 횟수별로 남기는 경로 수 상한. 미확정 설정값(D-29 — 사용자 확인 필요)
+// 환승 횟수별로 남기는 경로 수 상한(D-29 (A) 승인 2026-10-26)
 export const MAX_JOURNEYS_PER_TRANSFER_COUNT = 30;
 // 환승을 줄여도 되는 경로 제외: 뒤 구간 노선이 그 하차 지점 전에 승차 후보 정류장을 지나면(거기서 바로 타면 됨),
-// 앞 구간 노선이 그 승차 지점 이후에 하차 후보 정류장을 지나면(계속 타고 가면 됨) 그 경로는 만들지 않는다. 미확정 설정값(D-29)
+// 앞 구간 노선이 그 승차 지점 이후에 하차 후보 정류장을 지나면(계속 타고 가면 됨) 그 경로는 만들지 않는다(D-29 (A) 승인 2026-10-26)
 export const PRUNE_REPLACEABLE_TRANSFERS = true;
 
 export interface Candidate {
@@ -30,7 +30,7 @@ export interface Leg {
 }
 
 export interface Journey {
-  // 결정적 고정 식별자: 구간별 "노선:승차순번-하차순번"
+  // 고정 식별자(D-07): 구간별 "노선ID:승차정류장ID>하차정류장ID"를 탑승 순서대로 "|"로 연결
   id: string;
   legs: Leg[];
   transfers: number;
@@ -87,7 +87,8 @@ const legOf = (r: ValidRoute, i: number, j: number): Leg => ({
   alightOrder: j + 1,
 });
 
-const legKey = (l: Leg) => `${l.routeId}:${l.boardOrder}-${l.alightOrder}`;
+// D-07 고정 식별자 구간 표기: 노선ID:승차정류장ID>하차정류장ID
+export const legKey = (l: Leg) => `${l.routeId}:${l.boardStopId}>${l.alightStopId}`;
 
 // a가 b보다 나으면 음수: 걷기 → 탄 정류장 수 → 식별자
 function comparePartial(a: Partial1, b: Partial1): number {
@@ -148,12 +149,12 @@ function makeJourney(legs: Leg[], originWalk: number, destinationWalk: number): 
   };
 }
 
-// 결과 순서: 환승 횟수 → 걷는 거리 → 고정 식별자(FR-015 순서와 같은 축). 최종 추천 정렬(FR-011)은 TASK-017
+// 결과 순서: 환승 횟수 → 걷는 거리 → 고정 식별자(FR-015 순서와 같은 축). 화면 정렬은 ranking.ts(TASK-017)
 export function compareJourneys(a: Journey, b: Journey): number {
   return a.transfers - b.transfers || a.walkMeters - b.walkMeters || cmp(a.id, b.id);
 }
 
-// 같은 노선 조합 안에서 대표 고르기: 걷는 거리 → 탄 정류장 수 → 식별자(D-29 미확정)
+// 같은 노선 조합 안에서 대표 고르기: 걷는 거리 → 탄 정류장 수 → 식별자(D-29 (A) 승인)
 function compareRepresentative(a: Journey, b: Journey): number {
   return a.walkMeters - b.walkMeters || a.rideStops - b.rideStops || cmp(a.id, b.id);
 }

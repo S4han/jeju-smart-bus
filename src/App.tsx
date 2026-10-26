@@ -94,6 +94,7 @@ export default function App() {
     () => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []),
     [stopList],
   );
+  const stopsById = useMemo(() => new Map((stops ?? []).map((s) => [s.id, s] as const)), [stops]);
   const arrivals = useArrivals(ARRIVAL_SOURCE, selectedStop?.id ?? null);
 
   const handleMarkerSelect = useCallback(
@@ -171,6 +172,8 @@ export default function App() {
         canSearch={routeSearch.canSearch}
         onSearch={routeSearch.search}
         result={routeSearch.result}
+        routesById={routesById}
+        stopsById={stopsById}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>
