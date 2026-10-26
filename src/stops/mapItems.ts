@@ -31,3 +31,24 @@ export function boundsOf(points: ReadonlyArray<Coordinates>): { sw: Coordinates;
     ne: { lat: Math.max(...lats), lng: Math.max(...lngs) },
   };
 }
+
+// 선택한 경로의 승차·환승·하차 정류장에 단계 번호 마커(D-16). 정류장 사이 선은 그리지 않는다(AC-020)
+// 좌표가 없는 정류장은 지도에서 빠지고(toMarkerInputs) 단계 목록에만 남는다
+export function journeyMapItems(
+  points: ReadonlyArray<{ number: number; stop: { id: string; name: string | null; coordinates: Coordinates | null } }>,
+  origin: Coordinates | null,
+  destination: Coordinates | null,
+): MapItem[] {
+  return [
+    ...nearbyMapItems(null, origin, destination),
+    ...points.map(
+      (p): MapItem => ({
+        id: `step-${p.number}`,
+        title: `${p.number}. ${p.stop.name ?? `정류장 ${p.stop.id}`}`,
+        coordinates: p.stop.coordinates,
+        kind: "step",
+        stepNumber: p.number,
+      }),
+    ),
+  ];
+}

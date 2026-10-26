@@ -1,10 +1,12 @@
 // 경로 탐색 시작 조건 안내와 실행 (TASK-015 AC-006·AC-007, TASK-016 AC-008·AC-009·AC-016)
-// 결과: 시간 확인 추천(최대 3)·시간 미확인(최대 5) 두 영역(TASK-017). 구간별 상세 안내는 TASK-018
+// 결과: 시간 확인 추천(최대 3)·시간 미확인(최대 5) 두 영역(TASK-017), 단계 안내·규칙 설명·비교표(TASK-018 FR-013·018, US-004)
 import type { Route, RouteId, Stop, StopId } from "../../shared/domain";
 import { formatDistance } from "../stops/nearby";
 import { ENDPOINT_LABEL, type EndpointKey, type RouteReadiness } from "./candidates";
 import type { SearchResult } from "./engine";
 import { buildResultSections, type RankedJourney } from "./ranking";
+import { explainJourney, type Section } from "./explain";
+import { journeySteps, type Step, type StopRef } from "./steps";
 
 const names = (keys: EndpointKey[]) => keys.map((k) => ENDPOINT_LABEL[k]).join("·");
 
@@ -15,9 +17,11 @@ interface RouteReadinessNoticeProps {
   result: SearchResult | null;
   routesById: ReadonlyMap<RouteId, Route>;
   stopsById: ReadonlyMap<StopId, Stop>;
+  selectedJourneyId: string | null;
+  onSelectJourney: (id: string | null) => void;
 }
 
-export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, routesById, stopsById }: RouteReadinessNoticeProps) {
+export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, ...rest }: RouteReadinessNoticeProps) {
   return (
     <section className="route-readiness" aria-labelledby="route-readiness-title">
       <h2 id="route-readiness-title">경로 찾기</h2>
@@ -40,7 +44,7 @@ export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, r
             )}
           </ul>
         )}
-        {result && <SearchResults result={result} routesById={routesById} stopsById={stopsById} />}
+        {result && <SearchResults result={result} {...rest} />}
       </div>
       <button type="button" className="route-search-button" disabled={!canSearch} onClick={onSearch}>
         경로 찾기
@@ -53,9 +57,11 @@ interface SearchResultsProps {
   result: SearchResult;
   routesById: ReadonlyMap<RouteId, Route>;
   stopsById: ReadonlyMap<StopId, Stop>;
+  selectedJourneyId: string | null;
+  onSelectJourney: (id: string | null) => void;
 }
 
-function SearchResults({ result, routesById, stopsById }: SearchResultsProps) {
+function SearchResults({ result, ...rest }: SearchResultsProps) {
   if (result.status === "empty") {
     return (
       <p className="route-result">
@@ -66,6 +72,7 @@ function SearchResults({ result, routesById, stopsById }: SearchResultsProps) {
     );
   }
   const sections = buildResultSections(result.journeys);
+  const shown = [...sections.recommended, ...sections.timeUnknown];
   return (
     <>
       <h3>추천 경로 (소요시간 기준)</h3>
@@ -74,7 +81,7 @@ function SearchResults({ result, routesById, stopsById }: SearchResultsProps) {
       ) : (
         <ol className="route-list">
           {sections.recommended.map((r) => (
-            <JourneyItem key={r.journey.id} ranked={r} routesById={routesById} stopsById={stopsById} />
+            <JourneyItem key={r.journey.id} ranked={r} section="recommended" {...rest} />
           ))}
         </ol>
       )}
@@ -84,34 +91,127 @@ function SearchResults({ result, routesById, stopsById }: SearchResultsProps) {
           <p className="route-note">연결이 확인된 경로입니다. 총 소요시간은 확인할 수 없어 표시하지 않습니다. 환승이 적고 걷는 거리가 짧은 순입니다.</p>
           <ol className="route-list">
             {sections.timeUnknown.map((r) => (
-              <JourneyItem key={r.journey.id} ranked={r} routesById={routesById} stopsById={stopsById} />
+              <JourneyItem key={r.journey.id} ranked={r} section="time_unknown" {...rest} />
             ))}
           </ol>
         </>
       )}
+      <CompareTable rows={shown} routesById={rest.routesById} />
     </>
   );
 }
 
-function JourneyItem({ ranked, routesById, stopsById }: { ranked: RankedJourney } & Omit<SearchResultsProps, "result">) {
+type ItemProps = { ranked: RankedJourney; section: Section } & Omit<SearchResultsProps, "result">;
+
+const routeLabel = (routesById: ReadonlyMap<RouteId, Route>, j: RankedJourney["journey"]) =>
+  j.legs.map((l) => routesById.get(l.routeId)?.name ?? `노선 ${l.routeId}`).join(" → ");
+const stopLabel = (s: StopRef) => s.name ?? `정류장 번호 ${s.id} (이름 확인 불가)`;
+
+function JourneyItem({ ranked, section, routesById, stopsById, selectedJourneyId, onSelectJourney }: ItemProps) {
   const { journey, totalTime } = ranked;
-  const routeName = (id: RouteId) => routesById.get(id)?.name ?? "노선 정보 없음";
-  const stopName = (id: StopId) => stopsById.get(id)?.name ?? "정류장 정보 없음";
+  const selected = journey.id === selectedJourneyId;
   const first = journey.legs[0];
   const last = journey.legs[journey.legs.length - 1];
+  const name = (id: StopId) => stopsById.get(id)?.name ?? `정류장 번호 ${id} (이름 확인 불가)`;
   return (
-    <li className="route-item">
+    <li className={selected ? "route-item is-selected" : "route-item"}>
       <p className="route-item-head">
         <span className="route-badge">{journey.transfers === 0 ? "직행" : `환승 ${journey.transfers}회`}</span>
-        {journey.legs.map((l) => routeName(l.routeId)).join(" → ")}
+        {routeLabel(routesById, journey)}
       </p>
       <p className="route-meta">
-        승차 {stopName(first.boardStopId)} · 하차 {stopName(last.alightStopId)}
+        승차 {name(first.boardStopId)} · 하차 {name(last.alightStopId)}
       </p>
       <p className="route-meta">
         {totalTime ? `총 ${totalTime.minutes}분${totalTime.estimated ? " (추정 포함)" : ""}` : "총 소요시간 미확인"} · 걷기(직선) 출발{" "}
         {formatDistance(journey.originWalkMeters)} · 도착 {formatDistance(journey.destinationWalkMeters)}
       </p>
+      <button type="button" className="link-button" aria-expanded={selected} onClick={() => onSelectJourney(selected ? null : journey.id)}>
+        {selected ? "상세 닫기" : "상세 안내·지도 표시"}
+      </button>
+      {selected && (
+        <>
+          <ul className="route-explain">
+            {explainJourney(ranked, section).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <StepList steps={journeySteps(journey, stopsById, routesById)} />
+        </>
+      )}
     </li>
+  );
+}
+
+function StepList({ steps }: { steps: Step[] }) {
+  let number = 0;
+  return (
+    <ol className="route-steps">
+      {steps.map((step, i) => {
+        switch (step.kind) {
+          case "walk_to_board":
+            return <li key={i}>출발지에서 {stopLabel(step.to)}까지 걷기 (직선 {formatDistance(step.meters)})</li>;
+          case "board":
+            if (i === 1) number++;
+            return (
+              <li key={i}>
+                {i === 1 && <span className="route-step-num">{number}</span>}
+                {stopLabel(step.stop)}에서 {step.routeName ?? `노선 ${step.routeId}`} 승차
+                {step.towards && ` (${stopLabel(step.towards)} 방면)`} — {step.stopsToRide}개 정류장 이동
+              </li>
+            );
+          case "transfer":
+            number++;
+            return (
+              <li key={i}>
+                <span className="route-step-num">{number}</span>
+                {stopLabel(step.stop)}에서 내려 같은 정류장에서 환승
+              </li>
+            );
+          case "alight":
+            number++;
+            return (
+              <li key={i}>
+                <span className="route-step-num">{number}</span>
+                {stopLabel(step.stop)}에서 하차
+              </li>
+            );
+          case "walk_to_destination":
+            return <li key={i}>{stopLabel(step.from)}에서 목적지까지 걷기 (직선 {formatDistance(step.meters)})</li>;
+        }
+      })}
+    </ol>
+  );
+}
+
+// 경로 비교(US-004): 총 소요시간·환승·도보를 나란히. 값이 없으면 "미확인"
+function CompareTable({ rows, routesById }: { rows: RankedJourney[]; routesById: ReadonlyMap<RouteId, Route> }) {
+  if (rows.length < 2) return null;
+  return (
+    <div className="route-table-wrap">
+      <table className="route-compare">
+        <caption className="route-note">경로 비교</caption>
+        <thead>
+          <tr>
+            <th scope="col">경로</th>
+            <th scope="col">총 소요시간</th>
+            <th scope="col">환승</th>
+            <th scope="col">걷는 시간</th>
+            <th scope="col">걷는 거리(직선)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.journey.id}>
+              <th scope="row">{routeLabel(routesById, r.journey)}</th>
+              <td>{r.totalTime ? `${r.totalTime.minutes}분${r.totalTime.estimated ? "(추정)" : ""}` : "미확인"}</td>
+              <td>{r.journey.transfers}회</td>
+              <td>{r.walkMinutes !== null ? `${r.walkMinutes}분` : "미확인"}</td>
+              <td>{r.walkMeters !== null ? formatDistance(r.walkMeters) : "미확인"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

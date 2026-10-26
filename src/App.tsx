@@ -16,7 +16,8 @@ import { originFromMapPoint, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
-import { boundsOf, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
+import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
+import { stepPoints } from "./route/steps";
 import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
@@ -58,6 +59,7 @@ export default function App() {
 
   // 지도와 목록은 같은 결과 상태를 쓴다(TASK-013, AC-004)
   const stops = stopList.status === "ready" ? stopList.stops : null;
+  const stopsById = useMemo(() => new Map((stops ?? []).map((s) => [s.id, s] as const)), [stops]);
   const nearby = useNearbyStops(stops, origin?.coordinates ?? null);
   // 목적지 후보 정류장 — 출발지와 따로 찾고 확대 동의도 따로 받는다(TASK-015, AC-007)
   const destinationNearby = useNearbyStops(stops, destination?.coordinates ?? null);
@@ -66,25 +68,36 @@ export default function App() {
     [nearby.state, destinationNearby.state],
   );
   const routeSearch = useRouteSearch(stops, stopList.status === "ready" ? stopList.routes : null, readiness);
+  // 상세를 연 경로 — 지도에 승차·환승·하차 단계 번호를 표시(TASK-018, D-16)
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
+  useEffect(() => setSelectedJourneyId(null), [routeSearch.result]);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   useEffect(() => setSelectedStopId(null), [nearby.state]);
 
   // 출발지·목적지 전에는 PoC 화면 그대로(제주시 마커), 정해지면 출발지·목적지·출발지 주변 정류장만
   const hasPlace = origin !== null || destination !== null;
-  const items = useMemo(
-    () => (hasPlace ? nearbyMapItems(nearby.state, origin?.coordinates ?? null, destination?.coordinates ?? null) : POC_ITEMS),
-    [hasPlace, nearby.state, origin, destination],
-  );
+  const selectedPoints = useMemo(() => {
+    const journey = routeSearch.result?.status === "ok" ? routeSearch.result.journeys.find((j) => j.id === selectedJourneyId) : undefined;
+    return journey ? stepPoints(journey, stopsById) : null;
+  }, [routeSearch.result, selectedJourneyId, stopsById]);
+  const items = useMemo(() => {
+    if (!hasPlace) return POC_ITEMS;
+    const o = origin?.coordinates ?? null;
+    const d = destination?.coordinates ?? null;
+    return selectedPoints ? journeyMapItems(selectedPoints, o, d) : nearbyMapItems(nearby.state, o, d);
+  }, [hasPlace, selectedPoints, nearby.state, origin, destination]);
   const fitBounds = useMemo(
     () =>
       hasPlace
         ? boundsOf([
             ...(origin ? [origin.coordinates] : []),
             ...(destination ? [destination.coordinates] : []),
-            ...nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates),
+            ...(selectedPoints
+              ? selectedPoints.flatMap((p) => (p.stop.coordinates ? [p.stop.coordinates] : []))
+              : nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)),
           ])
         : null,
-    [hasPlace, origin, destination, nearby.state],
+    [hasPlace, origin, destination, nearby.state, selectedPoints],
   );
   const selectedStop = useMemo(
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
@@ -94,7 +107,6 @@ export default function App() {
     () => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []),
     [stopList],
   );
-  const stopsById = useMemo(() => new Map((stops ?? []).map((s) => [s.id, s] as const)), [stops]);
   const arrivals = useArrivals(ARRIVAL_SOURCE, selectedStop?.id ?? null);
 
   const handleMarkerSelect = useCallback(
@@ -174,6 +186,8 @@ export default function App() {
         result={routeSearch.result}
         routesById={routesById}
         stopsById={stopsById}
+        selectedJourneyId={selectedJourneyId}
+        onSelectJourney={setSelectedJourneyId}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </main>

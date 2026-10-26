@@ -55,4 +55,19 @@ describe("repo guard", () => {
     const offenders = ["src/origin", "src/stops", "src/destination", "src/route"].flatMap(listFiles).filter((file) => forbidden.test(readFileSync(file, "utf8")));
     expect(offenders).toEqual([]);
   });
+
+  // TASK-018·D-16: 궤적 데이터가 없으므로 지도에 선(Polyline·Polygon 등)을 그리지 않는다(AC-020)
+  it("src는 지도 선·도형 객체를 만들지 않는다", () => {
+    const offenders = listFiles("src").filter((file) => /\b(Polyline|Polygon|Rectangle|Circle|Ellipse|GroundOverlay)\b/.test(readFileSync(file, "utf8")));
+    expect(offenders).toEqual([]);
+  });
+
+  // FR-019(생성형 AI)은 MVP 제외 — AI SDK 의존성·호출 코드를 두지 않는다(AGENTS.md 규칙 3)
+  it("생성형 AI SDK 의존성·호출이 없다", () => {
+    const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+    const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+    expect(deps.filter((d) => /openai|anthropic|generative-ai|genai|langchain|cohere|mistral|ollama/i.test(d))).toEqual([]);
+    const code = ["src", "server", "shared", "api"].flatMap(listFiles);
+    expect(code.filter((f) => /api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis/.test(readFileSync(f, "utf8")))).toEqual([]);
+  });
 });
