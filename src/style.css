@@ -352,3 +352,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .pick-banner-text { margin-top: 4px; color: var(--text-2); font-size: 14px; }
 .pick-banner-actions { display: flex; gap: 8px; margin-top: 10px; }
 .pick-banner-actions .btn { flex: 1; min-height: 44px; }
+/* 정류장 순서 연결선 표기(D-33). 위쪽 오른편 — 아래쪽 NAVER 로고·축척과 겹치지 않음 */
+.route-legend { position: absolute; z-index: 9; right: 12px; top: 12px; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .94); box-shadow: 0 2px 8px rgba(0, 0, 0, .12); color: var(--text-2); font-size: 12px; font-weight: 600; }
+.route-legend-line { width: 22px; height: 5px; border-radius: 3px; background: #f04452; }
+.map-screen:not(.is-side) .route-legend { top: calc(256px + env(safe-area-inset-top)); }

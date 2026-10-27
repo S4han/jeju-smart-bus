@@ -37,7 +37,7 @@ src/origin/           # 출발지(TASK-011): 현재 위치 요청·정류장명 
 src/destination/      # 목적지(TASK-015) — 장소 선택 UI는 src/origin/PlacePicker.tsx 공용
 src/route/            # 경로: 탐색 시작 조건(candidates.ts — 출발지·목적지 후보, 위치별 확대 동의),
                       # 탐색 엔진(engine.ts — 직행·최대 2회 환승, 같은 정류장 ID 환승, 결정적, 정리 규칙 D-29),
-                      # 결과 구성·정렬(ranking.ts), 단계 안내(steps.ts)·규칙 설명(explain.ts). 지도에 선 금지(D-16, repo-guard)
+                      # 결과 구성·정렬(ranking.ts), 단계 안내(steps.ts)·규칙 설명(explain.ts). 지도 선은 정류장 순서 연결선만("실제 도로 경로 아님" 표기, D-33, repo-guard)
 src/stops/            # 주변 정류장(TASK-012): 500m → 동의 시 1km, 거리 계산은 shared/geo.ts(D-03)
                       # 지도·목록 동기화(TASK-013): 결과 상태 1개(useNearbyStops)를 지도 항목(mapItems)과 목록이 공유
 src/arrivals/         # 도착정보 화면(TASK-014): 판정은 shared/arrivals.ts — 스냅샷 노선으로 정류장 일치, 화면 시점 나이 ≤120초만 실시간
