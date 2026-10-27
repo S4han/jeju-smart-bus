@@ -3,7 +3,7 @@
 
 import type { Coordinates } from "../../shared/domain";
 import type { MapItem } from "../map/markers";
-import type { NearbyState } from "./nearby";
+import type { NearbyState, NearbyStop } from "./nearby";
 
 export const ORIGIN_ITEM_ID = "origin";
 export const DESTINATION_ITEM_ID = "destination";
@@ -57,3 +57,18 @@ export function journeyMapItems(
     ),
   ];
 }
+
+// 지도에서 고르기 미리보기(TASK-034): 핀 + 반경 1km 정류장. 기본 반경(500m) 밖 정류장은 흐리게(muted)
+export function pickPreviewItems(pin: Coordinates, stops: ReadonlyArray<NearbyStop>, baseRadiusMeters: number): MapItem[] {
+  return [
+    { id: PICK_ITEM_ID, title: "고른 지점", coordinates: pin, kind: "pick" },
+    ...stops.map(({ stop, distanceMeters }): MapItem => ({
+      id: stop.id,
+      title: stop.name,
+      coordinates: stop.coordinates,
+      kind: "stop",
+      ...(distanceMeters > baseRadiusMeters ? { muted: true } : {}),
+    })),
+  ];
+}
+export const PICK_ITEM_ID = "pick";

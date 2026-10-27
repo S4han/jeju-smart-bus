@@ -83,3 +83,20 @@ describe("정류장 이름 라벨", () => {
     expect(escapeHtml("A'B")).toBe("A&#39;B");
   });
 });
+
+describe("지도에서 고르기 미리보기 (TASK-034)", () => {
+  it("핀 + 반경 안 정류장, 기본 반경 밖은 흐리게", async () => {
+    const { pickPreviewItems } = await import("../../src/stops/mapItems");
+    const pin = { lat: 33.5, lng: 126.5 };
+    const s = (id: string, d: number) => ({ stop: { id, name: id, coordinates: pin }, distanceMeters: d });
+    const items = pickPreviewItems(pin, [s("A", 300), s("B", 800)], 500);
+    expect(items.map((i) => [i.id, i.kind, i.muted ?? false])).toEqual([
+      ["pick", "pick", false],
+      ["A", "stop", false],
+      ["B", "stop", true],
+    ]);
+    const html = toMarkerInputs(items).map((m) => markerHtml(m, false));
+    expect(html[0]).toContain("map-marker-pick");
+    expect(html[2]).toContain("is-muted");
+  });
+});

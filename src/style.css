@@ -342,3 +342,13 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .tl-next.is-none { color: var(--text-3); font-weight: 500; }
 /* 지도 SDK 요소(로고 등)가 펼친 패널 위로 올라오지 않게 지도 영역을 따로 쌓는다 */
 .map-stage { z-index: 0; isolation: isolate; }
+
+/* 지도에서 고르기(TASK-034): 핀, 흐린 정류장(500m~1km), 지도 위 안내 */
+.map-marker-pick { width: 32px; height: 32px; display: flex; align-items: flex-end; justify-content: center; font-size: 28px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.map-marker-stop-wrap.is-muted { opacity: .55; }
+.pick-banner { position: absolute; z-index: 12; left: 12px; right: 12px; top: 12px; max-width: 456px; margin: 0 auto; padding: 14px 16px; border-radius: 16px; background: var(--card); box-shadow: 0 6px 24px rgba(0, 0, 0, .16); }
+.map-screen:not(.is-side) .pick-banner { top: calc(12px + env(safe-area-inset-top)); }
+.pick-banner-title { font-size: 16px; font-weight: 700; }
+.pick-banner-text { margin-top: 4px; color: var(--text-2); font-size: 14px; }
+.pick-banner-actions { display: flex; gap: 8px; margin-top: 10px; }
+.pick-banner-actions .btn { flex: 1; min-height: 44px; }

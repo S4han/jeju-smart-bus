@@ -47,8 +47,8 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
         position: new maps.LatLng(input.position.lat, input.position.lng),
         map,
         title: input.title,
-        zIndex: selected ? 100 : input.kind === "step" ? 60 : input.kind === "via" ? 10 : input.kind === "origin" || input.kind === "destination" ? 50 : 0,
-        ...(html ? { icon: { content: html, anchor: input.kind === "origin" || input.kind === "destination" ? new maps.Point(20, 12) : input.kind === "step" ? new maps.Point(14, 14) : input.kind === "via" ? new maps.Point(7, 7) : new maps.Point(12, 12) } } : {}),
+        zIndex: selected ? 100 : input.kind === "pick" ? 90 : input.kind === "step" ? 60 : input.kind === "via" ? 10 : input.kind === "origin" || input.kind === "destination" ? 50 : 0,
+        ...(html ? { icon: { content: html, anchor: input.kind === "origin" || input.kind === "destination" ? new maps.Point(20, 12) : input.kind === "step" ? new maps.Point(14, 14) : input.kind === "via" ? new maps.Point(7, 7) : input.kind === "pick" ? new maps.Point(16, 32) : new maps.Point(12, 12) } } : {}),
       });
       const listener = onSelect ? maps.Event.addListener(marker, "click", () => onSelect(input.id)) : null;
       return { marker, listener };

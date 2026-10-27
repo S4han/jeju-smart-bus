@@ -16,11 +16,12 @@ import { describeOrigin, originFromMapPoint, originFromStop, type Origin } from 
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
-import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
+import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf, pickPreviewItems } from "./stops/mapItems";
+import { findStopsWithin, formatDistance, NEARBY_RADIUS_METERS } from "./stops/nearby";
 import { stepPoints, viaStops } from "./route/steps";
 import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
-import { routeReadiness, type EndpointKey } from "./route/candidates";
+import { ENDPOINT_LABEL, routeReadiness, type EndpointKey } from "./route/candidates";
 import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
 import { useRouteSearch, walkFromCurrentLocation } from "./route/useRouteSearch";
 import { useJourneyTimes } from "./route/useJourneyTimes";
@@ -36,6 +37,9 @@ const POC_ITEMS = [{ id: "jeju-city", title: "제주시", coordinates: JEJU }];
 // 지도 위에 떠 있는 출발·도착 카드를 피해 지도 범위를 맞춘다(TASK-022). 왼쪽 패널 배치는 카드가 패널 안에 있다(TASK-023)
 const SHEET_MAP_PADDING = { top: 150, right: 40, bottom: 40, left: 40 };
 const SIDE_MAP_PADDING = { top: 48, right: 48, bottom: 48, left: 48 };
+
+// 지도에서 고를 때 핀 주변에 미리 보여 줄 정류장 반경(사용자 요청 2026-10-27)
+const PICK_PREVIEW_RADIUS_METERS = 1_000;
 
 // 정류장·노선 정적 스냅샷(D-01, D-10 (A) 승인) — 빌드 때 생성된 공개 데이터 파일
 const SNAPSHOT_SOURCE = createHttpSnapshotSource(`${import.meta.env.BASE_URL}${SNAPSHOT_PATH}`);
@@ -67,10 +71,15 @@ export default function App() {
   const stopList = useStopNames(SNAPSHOT_SOURCE);
   const mapPickAvailable = granted && status === "ready";
 
-  const handleMapClick = useCallback(
-    (coordinates: Coordinates) => {
-      if (pickTarget === "origin") chooseOrigin(originFromMapPoint(coordinates));
-      if (pickTarget === "destination") chooseDestination(originFromMapPoint(coordinates));
+  // 지도에서 고르기(TASK-034): 누른 지점에 핀을 옮기고 반경 1km 정류장을 미리 보여 준 뒤, "이 위치로 정하기"나 정류장을 눌러 확정
+  const [pickPreview, setPickPreview] = useState<Coordinates | null>(null);
+  useEffect(() => setPickPreview(null), [pickTarget]);
+  const handleMapClick = useCallback((coordinates: Coordinates) => setPickPreview(coordinates), []);
+  const commitPick = useCallback(
+    (place: Origin | null) => {
+      if (!place) return;
+      if (pickTarget === "origin") chooseOrigin(place);
+      if (pickTarget === "destination") chooseDestination(place);
       setPickTarget(null);
     },
     [pickTarget, chooseOrigin, chooseDestination],
@@ -108,15 +117,20 @@ export default function App() {
     () => (selectedJourney && stopList.status === "ready" ? viaStops(selectedJourney, stopsById, new Map(stopList.routes.map((r) => [r.id, r] as const))) : []),
     [selectedJourney, stopsById, stopList],
   );
+  // 핀 주변 반경 1km 정류장(미리보기 — 경로 후보 규칙 AC-003·AC-007은 확정 후 그대로 적용)
+  const pickStops = useMemo(() => (stops && pickPreview ? findStopsWithin(stops, pickPreview, PICK_PREVIEW_RADIUS_METERS) : []), [stops, pickPreview]);
   const items = useMemo(() => {
+    if (pickTarget && pickPreview) return pickPreviewItems(pickPreview, pickStops, NEARBY_RADIUS_METERS);
     if (!hasPlace) return POC_ITEMS;
     const o = origin?.coordinates ?? null;
     const d = destination?.coordinates ?? null;
     return selectedPoints ? journeyMapItems(selectedPoints, o, d, selectedVia) : nearbyMapItems(nearby.state, o, d);
-  }, [hasPlace, selectedPoints, selectedVia, nearby.state, origin, destination]);
+  }, [pickTarget, pickPreview, pickStops, hasPlace, selectedPoints, selectedVia, nearby.state, origin, destination]);
   const fitBounds = useMemo(
     () =>
-      hasPlace
+      pickTarget && pickPreview
+        ? boundsOf([pickPreview, ...pickStops.map((n) => n.stop.coordinates)])
+        : hasPlace
         ? boundsOf([
             ...(origin ? [origin.coordinates] : []),
             ...(destination ? [destination.coordinates] : []),
@@ -125,7 +139,7 @@ export default function App() {
               : nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)),
           ])
         : null,
-    [hasPlace, origin, destination, nearby.state, selectedPoints, selectedVia],
+    [pickTarget, pickPreview, pickStops, hasPlace, origin, destination, nearby.state, selectedPoints, selectedVia],
   );
   const selectedStop = useMemo(
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
@@ -141,9 +155,12 @@ export default function App() {
 
   const handleMarkerSelect = useCallback(
     (id: string) => {
-      if (nearbyStopsOf(nearby.state).some((n) => n.stop.id === id)) setSelectedStopId(id);
+      // 고르는 중에는 미리 보인 정류장을 누르면 그 정류장으로 바로 정한다
+      const picked = pickTarget ? pickStops.find((n) => n.stop.id === id) : undefined;
+      if (picked) commitPick(originFromStop(picked.stop));
+      else if (nearbyStopsOf(nearby.state).some((n) => n.stop.id === id)) setSelectedStopId(id);
     },
-    [nearby.state],
+    [nearby.state, pickTarget, pickStops, commitPick],
   );
 
   // 서비스 장애 영향 안내(TASK-019). 지도는 동의한 경우에만 대상, 도착정보 장애는 도착정보 영역에서도 안내
@@ -346,6 +363,39 @@ export default function App() {
       ariaLabel="제주 지도"
     />
   );
+  // 지도에서 고르기 안내(TASK-034) — 지도 위쪽(NAVER 로고가 있는 아래쪽과 겹치지 않음)
+  const pickNear = pickStops.filter((n) => n.distanceMeters <= NEARBY_RADIUS_METERS).length;
+  const pickBanner = pickTarget && (
+    <div className="pick-banner" role="status" aria-live="polite">
+      {pickPreview ? (
+        <>
+          <p className="pick-banner-title">이 지점을 {ENDPOINT_LABEL[pickTarget]}로 할까요?</p>
+          <p className="pick-banner-text">
+            {pickStops.length > 0
+              ? `반경 1km 정류장 ${pickStops.length}곳(500m 안 ${pickNear}곳, 가장 가까운 곳 ${formatDistance(pickStops[0].distanceMeters)}). 정류장을 누르면 그 정류장으로 정해요.`
+              : "반경 1km 안에 정류장이 없어 이 지점으로는 버스 경로를 찾을 수 없어요. 다른 곳을 눌러 주세요."}
+          </p>
+          <div className="pick-banner-actions">
+            <button type="button" className="btn" disabled={pickStops.length === 0} onClick={() => commitPick(originFromMapPoint(pickPreview))}>
+              이 위치로 정하기
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setPickTarget(null)}>
+              취소
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="pick-banner-title">지도를 눌러 {ENDPOINT_LABEL[pickTarget]}를 고르세요</p>
+          <div className="pick-banner-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setPickTarget(null)}>
+              취소
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
   const mapCaption = (
     <div className="map-caption">
       <p aria-live="polite">{STATUS_MESSAGES[status]}</p>
@@ -372,6 +422,7 @@ export default function App() {
         </aside>
         <section className="map-stage" aria-label="지도">
           {mapView}
+          {pickBanner}
         </section>
       </div>
     );
@@ -383,7 +434,9 @@ export default function App() {
       <h1 className="visually-hidden">제주 스마트 버스</h1>
       <section className="map-stage" aria-label="지도">
         {mapView}
-        {sheet !== "full" && trip(true)}
+        {/* 지도에서 고르는 동안에는 요약 카드 자리에 안내를 띄운다(지도와 패널 사이 공간이 좁음) */}
+        {sheet !== "full" && !pickTarget && trip(true)}
+        {pickBanner}
       </section>
       <BottomSheet snap={sheet} onSnapChange={setSheet} label="버스 정보 패널">
         <ServiceNotices notices={notices} />
