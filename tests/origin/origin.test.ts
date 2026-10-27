@@ -8,7 +8,7 @@ import {
   originFromMapPoint,
   originFromStop,
 } from "../../src/origin/origin";
-import { normalizeStopName, searchStops } from "../../src/origin/stopSearch";
+import { nextStopNames, normalizeStopName, searchStops } from "../../src/origin/stopSearch";
 
 // 테스트용 가상 정류장(실제 데이터 아님)
 const STOPS: Stop[] = [
@@ -71,5 +71,33 @@ describe("정류장 이름 검색", () => {
 
   it("결과 개수 제한", () => {
     expect(searchStops(STOPS, "가상", 2)).toHaveLength(2);
+  });
+});
+
+// 검색 보완·방향 힌트(TASK-028)
+
+describe("정류장 검색 보완 (TASK-028)", () => {
+  const S = (id: string, name: string) => ({ id, name, coordinates: { lat: 33.5, lng: 126.5 } });
+  const stops = [S("1", "제주국제공항1(표선,성산,남원)"), S("2", "공항초소"), S("3", "제주시청")];
+  it("부분 일치가 없으면 글자 순서 포함으로 찾음: 제주공항 → 제주국제공항", () => {
+    expect(searchStops(stops, "제주공항").map((r) => r.stop.id)).toEqual(["1"]);
+  });
+  it("부분 일치가 있으면 순서 포함 결과를 섞지 않음", () => {
+    expect(searchStops(stops, "공항").map((r) => r.stop.id)).toEqual(["2", "1"]);
+  });
+  it("두 글자 이하는 순서 포함 검색을 하지 않음", () => {
+    expect(searchStops(stops, "제항")).toEqual([]);
+  });
+  it("다음 정류장 이름(방향 힌트)은 노선 정차 순서에서만 만든다", () => {
+    const all = [S("A", "정존마을"), S("B", "정존마을"), S("C", "노형오거리"), S("D", "신제주로터리")];
+    const byId = new Map(all.map((s) => [s.id, s] as const));
+    const routes = [
+      { id: "r1", name: "1", subName: "", type: "", stopIds: ["A", "C"] },
+      { id: "r2", name: "2", subName: "", type: "", stopIds: ["D", "B"] },
+    ];
+    const next = nextStopNames(routes, byId);
+    expect(next.get("A")).toEqual(["노형오거리"]);
+    expect(next.get("B")).toBeUndefined();
+    expect(next.get("D")).toEqual(["정존마을"]);
   });
 });

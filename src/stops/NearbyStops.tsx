@@ -1,6 +1,6 @@
 // 주변 정류장 목록 (TASK-012 FR-003·AC-003, TASK-013 FR-004·AC-004)
 // 결과 상태는 부모가 지도와 함께 쓰고, 이 컴포넌트는 같은 상태를 목록으로 그린다.
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { EXPANDED_RADIUS_METERS, NEARBY_RADIUS_METERS, formatDistance, type NearbyState } from "./nearby";
 
 interface NearbyStopsProps {
@@ -13,9 +13,18 @@ interface NearbyStopsProps {
   placeLabel?: "출발지" | "목적지";
 }
 
+// 처음에는 가까운 몇 곳만, 나머지는 "더 보기"(TASK-028). 지도에는 전체가 그대로 표시된다(AC-004 — 같은 집합)
+export const NEARBY_PREVIEW_COUNT = 5;
+
 export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onSelect, placeLabel = "출발지" }: NearbyStopsProps) {
   const titleId = useId();
   const listRef = useRef<HTMLOListElement>(null);
+  const [showAll, setShowAll] = useState(false);
+  const all = state.phase === "results" ? state.stops : [];
+  const selectedIndex = all.findIndex((n) => n.stop.id === selectedId);
+  // 지도에서 목록 밖(접힌 부분) 정류장을 고르면 목록을 펼친다
+  const expanded = showAll || selectedIndex >= NEARBY_PREVIEW_COUNT;
+  const visible = expanded ? all : all.slice(0, NEARBY_PREVIEW_COUNT);
   // 지도에서 고른 정류장이 목록에서도 보이도록 스크롤
   useEffect(() => {
     if (!selectedId) return;
@@ -35,7 +44,7 @@ export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onS
                 ` · 반경 밖이지만 같은 이름 정류장 바로 옆(길 건너 반대 방향 등) ${state.stops.filter((n) => n.pairOfId).length}곳 함께 표시`}
             </p>
             <ol className="nearby-list" ref={listRef}>
-              {state.stops.map(({ stop, distanceMeters, pairOfId }) => {
+              {visible.map(({ stop, distanceMeters, pairOfId }) => {
                 const selected = stop.id === selectedId;
                 const main = (
                   <span className="row-main">
@@ -75,6 +84,11 @@ export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onS
                 );
               })}
             </ol>
+            {all.length > NEARBY_PREVIEW_COUNT && (
+              <button type="button" className="btn btn-secondary btn-block nearby-more" aria-expanded={expanded} onClick={() => setShowAll(!expanded)}>
+                {expanded ? "접기" : `${all.length - NEARBY_PREVIEW_COUNT}곳 더 보기`}
+              </button>
+            )}
           </>
         )}
         {(state.phase === "offer_expansion" || state.phase === "expansion_declined") && (
