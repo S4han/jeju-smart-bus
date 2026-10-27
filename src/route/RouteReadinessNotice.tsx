@@ -34,7 +34,7 @@ export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, .
       <h2 id="route-readiness-title">경로 찾기</h2>
       <div aria-live="polite">
         {readiness.ready ? (
-          <p>
+          !result && <p>
             승차 후보 정류장 {readiness.origin.length}곳, 하차 후보 정류장 {readiness.destination.length}곳으로 경로를 찾을 수
             있습니다.
           </p>

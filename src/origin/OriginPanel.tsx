@@ -1,7 +1,7 @@
 // 출발지 설정 화면 (TASK-011, FR-001·FR-002, AC-001·AC-002, D-05)
 // 위치 안내 문구는 PRIV-001-004.md §7 초안이며 법적 충분성은 D-12(사용자 검토) 대상이다.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Origin } from "./origin";
 import { describeOrigin, originFromCurrentLocation } from "./origin";
 import { PlacePicker } from "./PlacePicker";
@@ -29,10 +29,6 @@ export function OriginPanel(props: OriginPanelProps) {
   const [manual, setManual] = useState(false);
   const failed = location.status !== "idle" && location.status !== "requesting" && location.status !== "ok";
 
-  // AC-001: 좌표를 확보한 경우에만 현재 위치를 출발지로 둔다
-  useEffect(() => {
-    if (location.status === "ok") onChange(originFromCurrentLocation(location.coordinates));
-  }, [location, onChange]);
 
   if (origin && !editing) {
     return (
