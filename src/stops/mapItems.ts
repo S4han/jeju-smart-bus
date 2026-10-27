@@ -38,9 +38,14 @@ export function journeyMapItems(
   points: ReadonlyArray<{ number: number; stop: { id: string; name: string | null; coordinates: Coordinates | null } }>,
   origin: Coordinates | null,
   destination: Coordinates | null,
+  // 경유 정류장(TASK-029) — 좌표가 없으면 지도에서 빠지고 단계 목록에만 남는다
+  via: ReadonlyArray<{ id: string; name: string | null; coordinates: Coordinates | null }> = [],
 ): MapItem[] {
   return [
     ...nearbyMapItems(null, origin, destination),
+    ...via.map(
+      (v, i): MapItem => ({ id: `via-${i}-${v.id}`, title: v.name ?? `정류장 ${v.id}`, coordinates: v.coordinates, kind: "via" }),
+    ),
     ...points.map(
       (p): MapItem => ({
         id: `step-${p.number}`,

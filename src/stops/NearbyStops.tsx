@@ -1,6 +1,7 @@
 // 주변 정류장 목록 (TASK-012 FR-003·AC-003, TASK-013 FR-004·AC-004)
 // 결과 상태는 부모가 지도와 함께 쓰고, 이 컴포넌트는 같은 상태를 목록으로 그린다.
 import { useEffect, useId, useRef, useState } from "react";
+import { stopNameWithDirection } from "../route/display";
 import { EXPANDED_RADIUS_METERS, NEARBY_RADIUS_METERS, formatDistance, type NearbyState } from "./nearby";
 
 interface NearbyStopsProps {
@@ -48,7 +49,7 @@ export function NearbyStops({ state, onExpand, onDecline, selectedId = null, onS
                 const selected = stop.id === selectedId;
                 const main = (
                   <span className="row-main">
-                    <span className="nearby-name">{stop.name}</span>
+                    <span className="nearby-name">{stopNameWithDirection(stop)}</span>
                     <span className="nearby-meta">
                       정류장 번호 {stop.id}
                       {pairOfId && " · 반경 밖(같은 이름 정류장 옆)"}

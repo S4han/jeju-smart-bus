@@ -277,3 +277,63 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .route-more > summary, .route-explain summary { cursor: pointer; color: var(--blue); font-weight: 600; font-size: 15px; padding: 10px 0; list-style-position: inside; }
 .route-explain summary { font-size: 14px; padding: 6px 0 0; }
 .route-explain-head { color: var(--text-2); }
+
+/* 경유 정류장(TASK-029): 지도엔 작은 흰 점(보라 테두리)+이름, 상세엔 펼쳐 보는 목록. 정류장 사이 선은 그리지 않음(D-16) */
+.map-marker-via-wrap { position: relative; width: 14px; height: 14px; }
+.map-marker-via { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--purple); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.map-marker-via-wrap .map-marker-label { font-size: 11px; font-weight: 500; color: var(--text-2); }
+.hide-marker-labels .map-marker-via-wrap .map-marker-label { display: none; }
+.route-via { margin-top: 6px; }
+.route-via summary { cursor: pointer; color: var(--blue); font-size: 14px; font-weight: 600; padding: 4px 0; }
+.route-via ol { margin: 6px 0 0; padding-left: 20px; color: var(--text-2); font-size: 14px; display: grid; gap: 2px; }
+.route-via li::before { content: none; }
+.route-steps .route-via li { padding: 0; font-size: 14px; color: var(--text-2); }
+.route-steps .route-via li::before, .route-steps .route-via li::after { content: none; display: none; }
+
+/* 경로 결과(TASK-030): 경로 탭 · 시간 막대 · 세로 단계 · 하단 요약 */
+.journey-tabs { display: flex; gap: 8px; overflow-x: auto; margin: 12px -20px 0; padding: 2px 20px 8px; scrollbar-width: none; }
+.journey-tabs::-webkit-scrollbar { display: none; }
+.journey-tab { flex: none; display: grid; gap: 2px; min-width: 132px; max-width: 220px; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--card); text-align: left; cursor: pointer; font: inherit; color: var(--text); }
+.journey-tab.is-selected { border-color: var(--blue); background: var(--blue-weak); }
+.journey-tab-label { font-size: 12px; font-weight: 700; color: var(--blue); }
+.journey-tab-time { font-size: 18px; font-weight: 800; }
+.journey-tab-routes { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.journey-detail { margin-top: 12px; }
+.journey-label { font-size: 14px; font-weight: 700; color: var(--blue); }
+.journey-total { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25; }
+.journey-total.is-unknown { font-size: 22px; color: var(--text-2); }
+.journey-clock { color: var(--text-2); font-size: 15px; }
+.journey-clock small { color: var(--text-3); font-size: 13px; }
+.journey-bar { display: flex; gap: 3px; height: 28px; margin: 14px 0 6px; }
+.journey-bar-group { display: flex; gap: 3px; min-width: 44px; }
+.journey-bar-seg { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 28px; border-radius: 14px; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.journey-bar-seg.is-wait, .journey-bar-seg.is-walk { background: var(--fill); color: var(--text-3); }
+.journey-bar-seg.is-bus { background: var(--blue); color: #fff; padding: 0 8px; }
+.journey-bar-num { font-weight: 800; }
+.journey-timeline { list-style: none; margin: 16px 0 0; padding: 0; }
+.tl-node { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; padding: 6px 0; }
+.tl-node::before { content: ""; position: absolute; left: 21px; top: 0; bottom: 0; width: 3px; background: var(--line); }
+.tl-node.is-bus::before { background: var(--blue); }
+.tl-node.is-origin::before { top: 50%; }
+.tl-node.is-destination::before { bottom: 50%; }
+.tl-dot { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--card); border: 3px solid var(--text-3); font-size: 12px; font-weight: 800; color: var(--text-2); }
+.tl-node.is-origin .tl-dot { border-color: var(--text); color: var(--text); }
+.tl-node.is-bus .tl-dot { border-color: var(--blue); font-size: 18px; }
+.tl-node.is-alight .tl-dot { border-color: var(--blue); color: var(--blue); }
+.tl-node.is-destination .tl-dot { border-color: var(--red); color: var(--red); }
+.tl-body { min-width: 0; padding-top: 8px; }
+.tl-title { font-size: 17px; font-weight: 700; }
+.tl-stop-id { margin-left: 6px; color: var(--text-3); font-size: 13px; font-weight: 500; }
+.tl-time { color: var(--text-2); font-size: 14px; }
+.tl-route { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.tl-route-meta { color: var(--text-2); font-size: 14px; }
+.tl-next { margin-top: 6px; color: var(--red); font-size: 14px; font-weight: 600; }
+.tl-next small, .tl-walk small { color: var(--text-3); font-weight: 400; }
+.tl-ride { margin-top: 6px; color: var(--text-2); font-size: 14px; }
+.tl-walk { position: relative; padding: 6px 0 6px 54px; color: var(--text-2); font-size: 14px; }
+.tl-walk::before { content: ""; position: absolute; left: 21px; top: 0; bottom: 0; border-left: 3px dotted var(--text-3); }
+.result-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--card); box-shadow: 0 -4px 16px rgba(0, 0, 0, .08); }
+.result-bar-summary { display: grid; }
+.result-bar-summary strong { font-size: 20px; color: var(--blue); }
+.result-bar-summary span { font-size: 14px; color: var(--text-2); }
+.result-bar .btn { min-height: 48px; }

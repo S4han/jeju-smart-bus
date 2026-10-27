@@ -17,7 +17,7 @@ import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
 import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
-import { stepPoints } from "./route/steps";
+import { stepPoints, viaStops } from "./route/steps";
 import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
@@ -95,16 +95,22 @@ export default function App() {
 
   // 출발지·목적지 전에는 PoC 화면 그대로(제주시 마커), 정해지면 출발지·목적지·출발지 주변 정류장만
   const hasPlace = origin !== null || destination !== null;
-  const selectedPoints = useMemo(() => {
-    const journey = routeSearch.result?.status === "ok" ? routeSearch.result.journeys.find((j) => j.id === selectedJourneyId) : undefined;
-    return journey ? stepPoints(journey, stopsById) : null;
-  }, [routeSearch.result, selectedJourneyId, stopsById]);
+  const selectedJourney = useMemo(
+    () => (routeSearch.result?.status === "ok" ? routeSearch.result.journeys.find((j) => j.id === selectedJourneyId) : undefined),
+    [routeSearch.result, selectedJourneyId],
+  );
+  const selectedPoints = useMemo(() => (selectedJourney ? stepPoints(selectedJourney, stopsById) : null), [selectedJourney, stopsById]);
+  // 경유 정류장(TASK-029): 노선 정차 순서대로, 지도에 작은 점으로
+  const selectedVia = useMemo(
+    () => (selectedJourney && stopList.status === "ready" ? viaStops(selectedJourney, stopsById, new Map(stopList.routes.map((r) => [r.id, r] as const))) : []),
+    [selectedJourney, stopsById, stopList],
+  );
   const items = useMemo(() => {
     if (!hasPlace) return POC_ITEMS;
     const o = origin?.coordinates ?? null;
     const d = destination?.coordinates ?? null;
-    return selectedPoints ? journeyMapItems(selectedPoints, o, d) : nearbyMapItems(nearby.state, o, d);
-  }, [hasPlace, selectedPoints, nearby.state, origin, destination]);
+    return selectedPoints ? journeyMapItems(selectedPoints, o, d, selectedVia) : nearbyMapItems(nearby.state, o, d);
+  }, [hasPlace, selectedPoints, selectedVia, nearby.state, origin, destination]);
   const fitBounds = useMemo(
     () =>
       hasPlace
@@ -112,11 +118,11 @@ export default function App() {
             ...(origin ? [origin.coordinates] : []),
             ...(destination ? [destination.coordinates] : []),
             ...(selectedPoints
-              ? selectedPoints.flatMap((p) => (p.stop.coordinates ? [p.stop.coordinates] : []))
+              ? [...selectedPoints.map((p) => p.stop), ...selectedVia].flatMap((p) => (p.coordinates ? [p.coordinates] : []))
               : nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)),
           ])
         : null,
-    [hasPlace, origin, destination, nearby.state, selectedPoints],
+    [hasPlace, origin, destination, nearby.state, selectedPoints, selectedVia],
   );
   const selectedStop = useMemo(
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
@@ -156,8 +162,8 @@ export default function App() {
   // 기기 화면에 맞춘 배치: 세로 휴대폰은 아래 패널, 태블릿·PC·가로 휴대폰은 왼쪽 패널(TASK-023)
   const layout = useMapLayout();
   useEffect(() => {
-    if (selectedJourneyId || pickTarget) setSheet("peek");
-  }, [selectedJourneyId, pickTarget]);
+    if (pickTarget) setSheet("peek");
+  }, [pickTarget]);
 
   // 요약 카드에서 출발·도착을 누르면 패널을 펴고 해당 선택 화면을 연다
   const openEditor = (key: EndpointKey) => {
@@ -171,7 +177,8 @@ export default function App() {
   // 경로 찾기 결과가 나오면 패널을 펴고 결과로 이동(TASK-028)
   useEffect(() => {
     if (!routeSearch.result) return;
-    setSheet("full");
+    // 결과가 나오면 지도(경로 번호·경유 정류장)와 요약이 함께 보이도록 접힌 높이로
+    setSheet("peek");
     requestAnimationFrame(() => document.getElementById("route-results")?.scrollIntoView?.({ block: "start" }));
   }, [routeSearch.result]);
 
@@ -289,6 +296,8 @@ export default function App() {
         onSelectJourney={setSelectedJourneyId}
         estimator={journeyTimes.estimator}
         timing={journeyTimes.state}
+        originLabel={origin ? describeOrigin(origin) : "출발지"}
+        destinationLabel={destination ? describeOrigin(destination) : "목적지"}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </>

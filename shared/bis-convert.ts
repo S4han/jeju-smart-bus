@@ -1,7 +1,7 @@
 // 제주 BIS 응답 → 도메인 변환과 정적 스냅샷 생성 (TASK-009, D-24·D-26, NFR-004)
 // 입력은 XML에서 꺼낸 문자열 레코드. 필수 값이 없거나 형식이 틀리면 채우지 않고 제외하며 사유를 센다.
 
-import type { Arrival, Coordinates, Route, RouteId, Stop, StopId } from "./domain.js";
+import type { Arrival, Coordinates, Route, RouteId, Stop, StopId, StopDirection } from "./domain.js";
 
 export type RawRecord = Record<string, string | undefined>;
 
@@ -24,9 +24,12 @@ export function toCoordinates(localX: string | undefined, localY: string | undef
   return inside ? { lat, lng } : null;
 }
 
+const DIRECTIONS = new Set<StopDirection>(["N", "S", "E", "W"]);
+
 export function toStop(raw: RawRecord): Stop | null {
   if (!has(raw.stationId) || !has(raw.stationNm)) return null;
-  return { id: raw.stationId, name: raw.stationNm, coordinates: toCoordinates(raw.localX, raw.localY) };
+  const direction = DIRECTIONS.has(raw.dirTp as StopDirection) ? (raw.dirTp as StopDirection) : undefined;
+  return { id: raw.stationId, name: raw.stationNm, coordinates: toCoordinates(raw.localX, raw.localY), ...(direction ? { direction } : {}) };
 }
 
 // BIS 일시 문자열 → epoch ms. 시간대 표기가 없으면 한국 시간(+09:00)으로 본다.
@@ -157,7 +160,15 @@ export function buildSnapshot(
       stats.routes.singleStopOrLess++;
       continue;
     }
-    routes.push({ id: bus.routeId, name: bus.routeNm, subName: text(bus.routeSubNm), type: text(bus.routeTp), stopIds: routeStopIds });
+    const number = text(bus.routeNum);
+    routes.push({
+      id: bus.routeId,
+      name: bus.routeNm,
+      subName: text(bus.routeSubNm),
+      type: text(bus.routeTp),
+      ...(number ? { number } : {}),
+      stopIds: routeStopIds,
+    });
     stats.routeStopRows += routeStopIds.length;
   }
   stats.routes.included = routes.length;
