@@ -101,3 +101,10 @@ describe("정류장 검색 보완 (TASK-028)", () => {
     expect(next.get("D")).toEqual(["정존마을"]);
   });
 });
+
+describe("정류장 출발지 방향 표기 (TASK-032)", () => {
+  it("정류소 방향이 있으면 이름 옆에 붙인다", () => {
+    const origin = originFromStop({ id: "W1", name: "노형초등학교", coordinates: { lat: 33.48, lng: 126.47 }, direction: "E" });
+    expect(describeOrigin(origin!)).toBe("정류장: 노형초등학교[동]");
+  });
+});

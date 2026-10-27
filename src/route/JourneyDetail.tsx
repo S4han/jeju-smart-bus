@@ -74,6 +74,10 @@ export function JourneyDetail({ ranked, label, routesById, stopsById, originLabe
           ? `${legRoute(reason.leg)}번 버스가 ${reason.boardMinutes}분 후 도착 예정이지만 ${reason.leg === 0 ? "걸어서" : "갈아타서"} 제때 타기 어렵고, 그다음 버스는 예측이 없습니다.`
           : `${legRoute(reason.leg)}번은 실시간 예측을 조회하지 못했습니다(조회 수 제한 또는 응답 실패).`;
 
+  // 출발지·목적지가 곧 승차·하차 정류장(도보 0m)인 경우
+  const startsAtStop = journey.originWalkMeters === 0;
+  const endsAtStop = journey.destinationWalkMeters === 0;
+
   const last = journey.legs[journey.legs.length - 1];
   const lastStop: StopRef = { id: last.alightStopId, name: stopsById.get(last.alightStopId)?.name ?? null, coordinates: null };
 
@@ -124,17 +128,22 @@ export function JourneyDetail({ ranked, label, routesById, stopsById, originLabe
       </div>
 
       <ol className="journey-timeline">
-        <li className="tl-node is-origin">
-          <span className="tl-dot" aria-hidden="true">출발</span>
-          <div className="tl-body">
-            <p className="tl-title">{originLabel}</p>
-            {clock && <p className="tl-time">{formatClock(now)}</p>}
-          </div>
-        </li>
-        <li className="tl-walk">
-          도보 {formatDistance(journey.originWalkMeters)}
-          {originWalk > 0 && ` · 약 ${originWalk}분`} <small>(직선거리 추정)</small>
-        </li>
+        {/* 출발지가 곧 승차 정류장이면(도보 0m) 출발·도보 단계를 생략한다(TASK-032) */}
+        {!startsAtStop && (
+          <>
+            <li className="tl-node is-origin">
+              <span className="tl-dot" aria-hidden="true">출발</span>
+              <div className="tl-body">
+                <p className="tl-title">{originLabel}</p>
+                {clock && <p className="tl-time">{formatClock(now)}</p>}
+              </div>
+            </li>
+            <li className="tl-walk">
+              도보 {formatDistance(journey.originWalkMeters)}
+              {originWalk > 0 && ` · 약 ${originWalk}분`} <small>(직선거리 추정)</small>
+            </li>
+          </>
+        )}
         {boards.map((b, i) => {
           const route = routesById.get(b.routeId);
           const variant = routeVariant(route);
@@ -193,20 +202,29 @@ export function JourneyDetail({ ranked, label, routesById, stopsById, originLabe
             <p className="tl-title">
               {stopName(lastStop, stopsById)} 하차<span className="tl-stop-id">{lastStop.id}</span>
             </p>
-            {clock && <p className="tl-time">{formatClock(clock.alight[clock.alight.length - 1])}</p>}
+            {clock && (
+              <p className="tl-time">
+                {formatClock(clock.alight[clock.alight.length - 1])}
+                {endsAtStop && " 도착 예정(목적지)"}
+              </p>
+            )}
           </div>
         </li>
-        <li className="tl-walk">
-          도보 {formatDistance(journey.destinationWalkMeters)}
-          {destWalk > 0 && ` · 약 ${destWalk}분`} <small>(직선거리 추정)</small>
-        </li>
-        <li className="tl-node is-destination">
-          <span className="tl-dot" aria-hidden="true">도착</span>
-          <div className="tl-body">
-            <p className="tl-title">{destinationLabel}</p>
-            {clock && <p className="tl-time">{formatClock(clock.end)} 도착 예정</p>}
-          </div>
-        </li>
+        {!endsAtStop && (
+          <>
+            <li className="tl-walk">
+              도보 {formatDistance(journey.destinationWalkMeters)}
+              {destWalk > 0 && ` · 약 ${destWalk}분`} <small>(직선거리 추정)</small>
+            </li>
+            <li className="tl-node is-destination">
+              <span className="tl-dot" aria-hidden="true">도착</span>
+              <div className="tl-body">
+                <p className="tl-title">{destinationLabel}</p>
+                {clock && <p className="tl-time">{formatClock(clock.end)} 도착 예정</p>}
+              </div>
+            </li>
+          </>
+        )}
       </ol>
       {children}
     </article>
