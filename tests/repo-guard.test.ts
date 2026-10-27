@@ -56,10 +56,19 @@ describe("repo guard", () => {
     expect(offenders).toEqual([]);
   });
 
-  // TASK-018·D-16: 궤적 데이터가 없으므로 지도에 선(Polyline·Polygon 등)을 그리지 않는다(AC-020)
-  it("src는 지도 선·도형 객체를 만들지 않는다", () => {
-    const offenders = listFiles("src").filter((file) => /\b(Polyline|Polygon|Rectangle|Circle|Ellipse|GroundOverlay)\b/.test(readFileSync(file, "utf8")));
+  // TASK-018·D-16: 궤적 데이터가 없으므로 지도에 도형을 그리지 않는다(AC-020)
+  // D-33(2026-10-27): 예외로 NaverMap.tsx의 정류장 순서 연결선(Polyline)만 허용 — "실제 도로 경로 아님" 표기와 함께
+  it("src는 지도 선·도형 객체를 만들지 않는다(정류장 순서 연결선 1곳 예외)", () => {
+    const offenders = listFiles("src").filter((file) => {
+      const text = readFileSync(file, "utf8");
+      if (/\b(Polygon|Rectangle|Circle|Ellipse|GroundOverlay)\b/.test(text)) return true;
+      return /\bPolyline\b/.test(text) && !file.replace(/\\/g, "/").endsWith("src/map/NaverMap.tsx");
+    });
     expect(offenders).toEqual([]);
+  });
+
+  it("정류장 순서 연결선을 그리면 '실제 도로 경로 아님'을 함께 표기한다(D-33)", () => {
+    expect(readFileSync("src/App.tsx", "utf8")).toContain("실제 도로 경로 아님");
   });
 
   // FR-019(생성형 AI)은 MVP 제외 — AI SDK 의존성·호출 코드를 두지 않는다(AGENTS.md 규칙 3)

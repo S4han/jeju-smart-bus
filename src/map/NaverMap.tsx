@@ -20,15 +20,21 @@ interface NaverMapProps {
   fitPadding?: { top: number; right: number; bottom: number; left: number };
   // 선택한 정류장 등 보여 줘야 할 지점. 화면(여백 안) 밖에 있을 때만 지도를 옮긴다(TASK-025)
   focus?: Coordinates | null;
+  // 정류장 순서 연결선(D-33) — 실제 도로 궤적이 아니므로 부모가 "실제 도로 경로 아님" 표기를 함께 보여 준다
+  stopPaths?: ReadonlyArray<ReadonlyArray<Coordinates>>;
   ariaLabel: string;
 }
 
 // 이보다 멀리 축소하면 정류장 이름을 숨긴다 — 이름끼리 겹쳐 읽을 수 없게 되는 것을 막는다(TASK-024)
 export const LABEL_MIN_ZOOM = 15;
 
+const NO_PATHS: ReadonlyArray<ReadonlyArray<Coordinates>> = [];
+// 내비게이션처럼 붉은 선(사용자 요청, D-33). 마커보다 아래에 그린다
+const STOP_PATH_STYLE = { strokeColor: "#f04452", strokeWeight: 6, strokeOpacity: 0.85, strokeLineCap: "round", strokeLineJoin: "round", zIndex: 5 } as const;
+
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 
-export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, focus = null, ariaLabel }: NaverMapProps) {
+export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, focus = null, stopPaths = NO_PATHS, ariaLabel }: NaverMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
 
@@ -95,6 +101,15 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
     map.panTo(target);
     // 선택이 바뀔 때만 옮긴다(여백 변경만으로는 옮기지 않음)
   }, [maps, focus?.lat, focus?.lng]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!maps || !map || stopPaths.length === 0 || typeof maps.Polyline !== "function") return;
+    const lines = stopPaths.map(
+      (path) => new maps.Polyline({ map, path: path.map((c) => new maps.LatLng(c.lat, c.lng)), ...STOP_PATH_STYLE }),
+    );
+    return () => lines.forEach((line) => line.setMap(null));
+  }, [maps, stopPaths]);
 
   // 확대 수준에 따라 정류장 이름 표시/숨김(지도 영역 class만 바꾼다)
   useEffect(() => {
