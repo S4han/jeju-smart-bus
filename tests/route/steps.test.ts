@@ -5,6 +5,7 @@ import { findJourneys, indexRoutes, type Journey } from "../../src/route/engine"
 import { explainJourney } from "../../src/route/explain";
 import { sumTime, type RankedJourney } from "../../src/route/ranking";
 import { journeySteps, stepPoints, viaStops } from "../../src/route/steps";
+import { directionLabel, formatClock, formatDuration, routeNumber, routeVariant } from "../../src/route/display";
 import { journeyMapItems } from "../../src/stops/mapItems";
 import { toMarkerInputs, markerHtml } from "../../src/map/markers";
 
@@ -120,5 +121,32 @@ describe("경유 정류장 (TASK-029)", () => {
     // 지도 항목: 경유는 kind "via", 선 없음
     const items = journeyMapItems([], null, null, viaStops(journey, stops, routes));
     expect(items.map((i) => i.kind)).toEqual(["via", "via"]);
+  });
+});
+
+// 표시 형식(TASK-030)
+
+
+describe("경로 표시 형식 (TASK-030)", () => {
+  it("노선 번호는 routeNum 원문 우선, 없으면 노선 이름", () => {
+    expect(routeNumber({ name: "254-1", number: "254" }, "R")).toBe("254");
+    expect(routeVariant({ name: "254-1", number: "254" })).toBe("254-1");
+    expect(routeNumber({ name: "201" }, "R")).toBe("201");
+    expect(routeVariant({ name: "201", number: "201" })).toBeNull();
+    expect(routeNumber(undefined, "405")).toBe("노선 405");
+    // 실데이터 불일치 사례: routeNum이 이름 앞부분이 아니면 이름 그대로
+    expect(routeNumber({ name: "43-1", number: "43-2" }, "R")).toBe("43-1");
+    expect(routeVariant({ name: "43-1", number: "43-2" })).toBeNull();
+  });
+  it("소요시간·시각 형식", () => {
+    expect(formatDuration(35)).toBe("35분");
+    expect(formatDuration(92)).toBe("1시간 32분");
+    expect(formatDuration(120)).toBe("2시간");
+    expect(formatClock(Date.UTC(2026, 9, 27, 0, 38))).toBe("오전 9:38");
+  });
+  it("정류소 방향 코드는 [동·서·남·북]으로만 옮기고 없으면 표시하지 않는다", () => {
+    expect(directionLabel("W")).toBe("서");
+    expect(directionLabel("N")).toBe("북");
+    expect(directionLabel(undefined)).toBeNull();
   });
 });

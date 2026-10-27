@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { buildArrivalBoard, currentAgeSeconds } from "../../shared/arrivals";
 import type { Route, RouteId, Stop } from "../../shared/domain";
 import type { ArrivalsState } from "./useArrivals";
+import { routeNumber, routeVariant, stopNameWithDirection } from "../route/display";
 import { useTicker } from "./useArrivals";
 
 interface ArrivalPanelProps {
@@ -36,7 +37,7 @@ export function ArrivalPanel({ stop, state, routesById, onRefresh, actions }: Ar
 
   return (
     <section className="arrivals" aria-labelledby="arrivals-title">
-      <h2 id="arrivals-title">{stop.name} 도착정보</h2>
+      <h2 id="arrivals-title">{stopNameWithDirection(stop)} 도착정보</h2>
       {actions}
       <div aria-live="polite">
         {state.status === "loading" && <p>도착정보를 불러오는 중입니다…</p>}
@@ -53,8 +54,11 @@ export function ArrivalPanel({ stop, state, routesById, onRefresh, actions }: Ar
                 {board.realtime.map(({ route, arrival }) => (
                   <li key={`${route.id}-${arrival.stopOrder}-${arrival.vehicleId}`}>
                     <span className="arrivals-route">
-                      {route.name}
-                      {route.subName && <span className="arrivals-sub"> ({route.subName})</span>}
+                      {routeNumber(route, route.id)}
+                      <span className="arrivals-sub">
+                        {" "}
+                        ({[routeVariant(route), route.subName].filter(Boolean).join(" · ")})
+                      </span>
                     </span>
                     <span className="arrivals-time">
                       <strong>{arrival.minutesToArrival}분 후</strong>

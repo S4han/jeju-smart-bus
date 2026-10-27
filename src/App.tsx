@@ -162,8 +162,8 @@ export default function App() {
   // 기기 화면에 맞춘 배치: 세로 휴대폰은 아래 패널, 태블릿·PC·가로 휴대폰은 왼쪽 패널(TASK-023)
   const layout = useMapLayout();
   useEffect(() => {
-    if (selectedJourneyId || pickTarget) setSheet("peek");
-  }, [selectedJourneyId, pickTarget]);
+    if (pickTarget) setSheet("peek");
+  }, [pickTarget]);
 
   // 요약 카드에서 출발·도착을 누르면 패널을 펴고 해당 선택 화면을 연다
   const openEditor = (key: EndpointKey) => {
@@ -177,7 +177,8 @@ export default function App() {
   // 경로 찾기 결과가 나오면 패널을 펴고 결과로 이동(TASK-028)
   useEffect(() => {
     if (!routeSearch.result) return;
-    setSheet("full");
+    // 결과가 나오면 지도(경로 번호·경유 정류장)와 요약이 함께 보이도록 접힌 높이로
+    setSheet("peek");
     requestAnimationFrame(() => document.getElementById("route-results")?.scrollIntoView?.({ block: "start" }));
   }, [routeSearch.result]);
 
@@ -295,6 +296,8 @@ export default function App() {
         onSelectJourney={setSelectedJourneyId}
         estimator={journeyTimes.estimator}
         timing={journeyTimes.state}
+        originLabel={origin ? describeOrigin(origin) : "출발지"}
+        destinationLabel={destination ? describeOrigin(destination) : "목적지"}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
     </>

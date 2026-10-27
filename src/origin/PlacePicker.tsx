@@ -8,6 +8,7 @@ import { formatDistance } from "../stops/nearby";
 import type { Origin } from "./origin";
 import { originFromStop } from "./origin";
 import { nextStopNames, searchStops } from "./stopSearch";
+import { stopNameWithDirection } from "../route/display";
 import type { StopListState } from "./useStopNames";
 
 interface PlacePickerProps {
@@ -73,7 +74,7 @@ export function PlacePicker({ label, stopList, onSelect, mapPickAvailable, picki
                     }}
                   >
                     <span className="row-main">
-                      <span className="nearby-name">{stop.name}</span>
+                      <span className="nearby-name">{stopNameWithDirection(stop)}</span>
                       <span className="origin-stop-id">
                         정류장 번호 {stop.id}
                         {(duplicated.get(stop.name) ?? 0) > 1 && nextNames?.get(stop.id) && ` · 다음 정류장: ${nextNames.get(stop.id)!.slice(0, 2).join("·")}`}
