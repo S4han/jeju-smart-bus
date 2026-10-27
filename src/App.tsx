@@ -12,7 +12,7 @@ import { STATUS_MESSAGES } from "./map/naverSdk";
 import { useMapConsent } from "./map/useMapConsent";
 import { useNaverMaps } from "./map/useNaverMaps";
 import { OriginPanel } from "./origin/OriginPanel";
-import { describeOrigin, originFromMapPoint, type Origin } from "./origin/origin";
+import { describeOrigin, originFromMapPoint, originFromStop, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
@@ -166,8 +166,45 @@ export default function App() {
     </nav>
   );
 
+  // 지도·목록에서 고른 정류장: 맨 위에 도착정보와 함께 "출발지로·도착지로" 버튼(TASK-027)
+  const isOriginStop = (id: string) => origin?.kind === "stop" && origin.stopId === id;
+  const isDestinationStop = (id: string) => destination?.kind === "stop" && destination.stopId === id;
+  const selectedStopPanel = selectedStop && (
+    <ArrivalPanel
+      stop={selectedStop}
+      state={arrivals.state}
+      routesById={routesById}
+      onRefresh={arrivals.refresh}
+      actions={
+        <div className="stop-actions">
+          <button
+            type="button"
+            className="btn btn-block btn-weak"
+            disabled={isOriginStop(selectedStop.id)}
+            onClick={() => setOrigin(originFromStop(selectedStop))}
+          >
+            {isOriginStop(selectedStop.id) ? "출발지로 정함" : "출발지로"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-block btn-destination"
+            disabled={isDestinationStop(selectedStop.id)}
+            onClick={() => setDestination(originFromStop(selectedStop))}
+          >
+            {isDestinationStop(selectedStop.id) ? "도착지로 정함" : "도착지로"}
+          </button>
+        </div>
+      }
+    />
+  );
+  // 정류장을 고르면 패널을 그 카드 위치로 스크롤
+  useEffect(() => {
+    if (selectedStopId) document.getElementById("arrivals-title")?.closest("section")?.scrollIntoView?.({ block: "start" });
+  }, [selectedStopId]);
+
   const panels = (
     <>
+      {selectedStopPanel}
       <OriginPanel
         origin={origin}
         onChange={setOrigin}
@@ -186,9 +223,6 @@ export default function App() {
           selectedId={selectedStopId}
           onSelect={setSelectedStopId}
         />
-      )}
-      {selectedStop && (
-        <ArrivalPanel stop={selectedStop} state={arrivals.state} routesById={routesById} onRefresh={arrivals.refresh} />
       )}
       <DestinationPanel
         destination={destination}

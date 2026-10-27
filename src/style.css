@@ -253,3 +253,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .map-marker-stop-wrap.is-selected .map-marker-label { color: var(--red); font-size: 13px; font-weight: 700; max-width: 12em; -webkit-line-clamp: 3; }
 .map-marker-step-wrap .map-marker-label { color: var(--purple); font-weight: 700; max-width: 10em; -webkit-line-clamp: 3; }
 .hide-marker-labels .map-marker-stop-wrap:not(.is-selected) .map-marker-label { display: none; }
+
+/* 고른 정류장의 출발지로·도착지로 버튼(TASK-027) */
+.stop-actions { display: flex; gap: 8px; margin: 12px 0 8px; }
+.btn-destination { background: var(--red-weak); color: var(--red); }
+.stop-actions .btn:disabled { opacity: .55; cursor: default; }

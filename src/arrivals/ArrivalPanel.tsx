@@ -1,6 +1,6 @@
 // 정류장 도착정보 (TASK-014, FR-005·FR-014, AC-005·AC-014)
 // 실시간(120초 이내 산출, 차량 있음)만 시간을 보여 준다. 그 밖에는 "실시간 정보 없음" — 추정치를 만들지 않는다(시간표 자료 없음, R-21)
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { buildArrivalBoard, currentAgeSeconds } from "../../shared/arrivals";
 import type { Route, RouteId, Stop } from "../../shared/domain";
 import type { ArrivalsState } from "./useArrivals";
@@ -11,6 +11,8 @@ interface ArrivalPanelProps {
   state: ArrivalsState;
   routesById: ReadonlyMap<RouteId, Route>;
   onRefresh: () => void;
+  // 정류장 제목 아래 동작(출발지로·도착지로 — TASK-027)
+  actions?: ReactNode;
 }
 
 // 장애 원인별 안내(TASK-019). 실패 시에는 이전 값·추정치를 보여 주지 않는다(AC-017)
@@ -22,7 +24,7 @@ const FAILURE_MESSAGES: Record<string, string> = {
   unavailable: "도착정보 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
 };
 
-export function ArrivalPanel({ stop, state, routesById, onRefresh }: ArrivalPanelProps) {
+export function ArrivalPanel({ stop, state, routesById, onRefresh, actions }: ArrivalPanelProps) {
   const now = useTicker(10_000, state.status === "ready");
   const board = useMemo(() => {
     if (state.status !== "ready") return null;
@@ -35,6 +37,7 @@ export function ArrivalPanel({ stop, state, routesById, onRefresh }: ArrivalPane
   return (
     <section className="arrivals" aria-labelledby="arrivals-title">
       <h2 id="arrivals-title">{stop.name} 도착정보</h2>
+      {actions}
       <div aria-live="polite">
         {state.status === "loading" && <p>도착정보를 불러오는 중입니다…</p>}
         {state.status !== "loading" && state.status !== "ready" && state.status !== "idle" && (
