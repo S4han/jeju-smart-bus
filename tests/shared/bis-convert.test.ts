@@ -24,9 +24,18 @@ describe("좌표 (D-24·D-26)", () => {
 });
 
 describe("정류장 변환", () => {
-  it("실응답 정류장은 이름·ID와 확인된 좌표만 가진다", () => {
-    const [, , terminal] = fixture<RawRecord[]>("station-items.json");
-    expect(toStop(terminal)).toEqual({ id: "405000153", name: "제주버스터미널", coordinates: { lat: 33.499974, lng: 126.514 } });
+  it("실응답 정류장은 이름·ID와 확인된 좌표, 방향 원문(dirTp)만 가진다", () => {
+    const [first, second, terminal] = fixture<RawRecord[]>("station-items.json");
+    expect(toStop(terminal)).toEqual({ id: "405000153", name: "제주버스터미널", coordinates: { lat: 33.499974, lng: 126.514 }, direction: "S" });
+    expect(toStop(first)?.direction).toBe("N");
+    // dirTp "null"(실응답 원문)은 방향 없음
+    expect(toStop(second)).not.toHaveProperty("direction");
+  });
+
+  it("노선 표시 번호는 routeNum 원문(실응답: routeNm 5000-1 → routeNum 5000)", () => {
+    const [bus] = fixture<RawRecord[]>("bus-items.json");
+    expect(bus.routeNm).toBe("5000-1");
+    expect(bus.routeNum).toBe("5000");
   });
 
   it("좌표가 없어도 정류장은 남기되 좌표 있음으로 바꾸지 않는다", () => {

@@ -16,7 +16,11 @@ export interface Stop {
   name: string;
   // null = 좌표 확인 불가(D-24). 지도·반경 검색에서 제외하고 목록에는 남긴다
   coordinates: Coordinates | null;
+  // BIS Station dirTp 원문(N·S·E·W만, 그 밖의 값은 두지 않음) — 정류장 방향 표시용(TASK-030, 의미는 실데이터로 검증)
+  direction?: StopDirection;
 }
+
+export type StopDirection = "N" | "S" | "E" | "W";
 
 // 운행 방향은 노선 ID로 구분되고 stopIds 순서가 운행 순서다(GATE-02-03.md §2, D-21)
 export interface Route {
@@ -24,6 +28,8 @@ export interface Route {
   name: string;
   subName: string | null;
   type: string | null;
+  // BIS Bus routeNum 원문(예: routeNm "5000-1" → "5000") — 화면 표시용 번호(TASK-030)
+  number?: string;
   stopIds: StopId[];
 }
 
