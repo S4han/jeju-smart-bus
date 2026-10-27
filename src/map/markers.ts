@@ -4,7 +4,7 @@
 import type { Coordinates } from "../../shared/domain";
 
 // kind가 없으면 SDK 기본 마커(PoC 그대로), origin·destination·stop은 서로 구분되는 모양으로 그린다(TASK-013·015)
-export type MapItemKind = "origin" | "destination" | "stop" | "step" | "via";
+export type MapItemKind = "origin" | "destination" | "stop" | "step" | "via" | "pick";
 
 export interface MapItem {
   id: string;
@@ -13,6 +13,8 @@ export interface MapItem {
   kind?: MapItemKind;
   // 경로 단계 번호(kind "step", D-16)
   stepNumber?: number;
+  // 흐리게 표시(지도에서 고르기 미리보기의 500m~1km 정류장 — TASK-034)
+  muted?: boolean;
 }
 
 export interface MarkerInput {
@@ -21,6 +23,7 @@ export interface MarkerInput {
   position: Coordinates;
   kind?: MapItemKind;
   stepNumber?: number;
+  muted?: boolean;
 }
 
 export function toMarkerInputs(items: ReadonlyArray<MapItem>): MarkerInput[] {
@@ -32,6 +35,7 @@ export function toMarkerInputs(items: ReadonlyArray<MapItem>): MarkerInput[] {
             position: item.coordinates,
             ...(item.kind ? { kind: item.kind } : {}),
             ...(item.stepNumber !== undefined ? { stepNumber: item.stepNumber } : {}),
+            ...(item.muted ? { muted: true } : {}),
           },
         ]
       : []));
@@ -53,7 +57,8 @@ export function markerHtml(input: MarkerInput, selected: boolean): string | null
   // 경유 정류장(TASK-029): 작은 흰 점 + 이름(축소하면 이름 숨김)
   if (input.kind === "via")
     return `<div class="map-marker map-marker-via-wrap" aria-hidden="true"><div class="map-marker-via"></div>${label(input.title)}</div>`;
+  if (input.kind === "pick") return '<div class="map-marker map-marker-pick" aria-hidden="true"><span>📍</span></div>';
   if (input.kind === "stop")
-    return `<div class="map-marker map-marker-stop-wrap${selected ? " is-selected" : ""}" aria-hidden="true"><div class="map-marker-stop${selected ? " is-selected" : ""}"></div>${label(input.title)}</div>`;
+    return `<div class="map-marker map-marker-stop-wrap${selected ? " is-selected" : ""}${input.muted ? " is-muted" : ""}" aria-hidden="true"><div class="map-marker-stop${selected ? " is-selected" : ""}"></div>${label(input.title)}</div>`;
   return null;
 }
