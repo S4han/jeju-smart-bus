@@ -12,7 +12,7 @@ import { STATUS_MESSAGES } from "./map/naverSdk";
 import { useMapConsent } from "./map/useMapConsent";
 import { useNaverMaps } from "./map/useNaverMaps";
 import { OriginPanel } from "./origin/OriginPanel";
-import { describeOrigin, originFromMapPoint, originFromStop, type Origin } from "./origin/origin";
+import { describeOrigin, originFromCurrentLocation, originFromMapPoint, originFromStop, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
@@ -68,6 +68,11 @@ export default function App() {
   // 지도 직접 지정 대상(출발지·목적지 중 하나만)
   const [pickTarget, setPickTarget] = useState<EndpointKey | null>(null);
   const location = useCurrentLocation();
+  // AC-001: 좌표를 확보한 경우에만 현재 위치를 출발지로 둔다. 위치가 새로 확인될 때만 적용
+  // (패널을 숨겼다 다시 보여 줄 때 출발지를 되돌리지 않도록 OriginPanel에서 옮김 — TASK-035)
+  useEffect(() => {
+    if (location.state.status === "ok") chooseOrigin(originFromCurrentLocation(location.state.coordinates));
+  }, [location.state, chooseOrigin]);
   const stopList = useStopNames(SNAPSHOT_SOURCE);
   const mapPickAvailable = granted && status === "ready";
 
@@ -262,8 +267,12 @@ export default function App() {
     if (selectedStopId) document.getElementById("arrivals-title")?.closest("section")?.scrollIntoView?.({ block: "start" });
   }, [selectedStopId]);
 
+  const resultMode = routeSearch.result !== null && !editing.origin && !editing.destination;
   const panels = (
     <>
+      {/* 경로를 찾은 뒤에는 출발·도착 정류장 목록을 숨기고 결과를 바로 보여 준다(TASK-035). 위쪽 요약에서 출발·도착을 누르면 다시 연다 */}
+      {!resultMode && (
+        <>
       {selectedStopPanel}
       <OriginPanel
         origin={origin}
@@ -304,6 +313,8 @@ export default function App() {
           onDecline={destinationNearby.decline}
           placeLabel="목적지"
         />
+      )}
+        </>
       )}
       <RouteReadinessNotice
         readiness={readiness}
