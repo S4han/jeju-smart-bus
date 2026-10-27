@@ -5,7 +5,7 @@ import { routeReadiness } from "../../src/route/candidates";
 import { declineExpansion, expandNearby, searchNearby } from "../../src/stops/nearby";
 import { DESTINATION_ITEM_ID, ORIGIN_ITEM_ID, nearbyMapItems } from "../../src/stops/mapItems";
 import { markerHtml, toMarkerInputs } from "../../src/map/markers";
-import { toCandidates } from "../../src/route/useRouteSearch";
+import { toCandidates, walkFromCurrentLocation } from "../../src/route/useRouteSearch";
 import { haversineMeters } from "../../shared/geo";
 
 const ORIGIN: Coordinates = { lat: 33.5, lng: 126.5 };
@@ -105,5 +105,18 @@ describe("출발 쪽 걷는 거리 기준 (TASK-033)", () => {
     const [c] = toCandidates(near, here);
     expect(c.walkMeters).toBeCloseTo(haversineMeters(here, stop.coordinates), 6);
     expect(c.walkMeters).toBeGreaterThan(200);
+  });
+});
+
+describe("현재 위치 기준 2km 제한 (TASK-033)", () => {
+  const stopOrigin = { kind: "stop", coordinates: { lat: 33.4846, lng: 126.4772 } };
+  it("정류장 출발지 + 2km 이내 현재 위치 → 현재 위치 기준", () => {
+    const here = { lat: 33.4936, lng: 126.4772 }; // 약 1km
+    expect(walkFromCurrentLocation(stopOrigin, here)).toEqual(here);
+  });
+  it("2km를 넘거나, 현재 위치를 모르거나, 출발지가 정류장이 아니면 장소 기준(null)", () => {
+    expect(walkFromCurrentLocation(stopOrigin, { lat: 33.5066, lng: 126.4772 })).toBeNull(); // 약 2.4km
+    expect(walkFromCurrentLocation(stopOrigin, null)).toBeNull();
+    expect(walkFromCurrentLocation({ kind: "map_point", coordinates: stopOrigin.coordinates }, { lat: 33.4936, lng: 126.4772 })).toBeNull();
   });
 });
