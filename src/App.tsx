@@ -22,7 +22,7 @@ import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
 import { RouteReadinessNotice } from "./route/RouteReadinessNotice";
-import { useRouteSearch } from "./route/useRouteSearch";
+import { useRouteSearch, walkFromCurrentLocation } from "./route/useRouteSearch";
 import { useJourneyTimes } from "./route/useJourneyTimes";
 import { impactNotice, type Cause, type Service } from "./service/impact";
 import { ServiceNotices } from "./service/ServiceNotices";
@@ -86,7 +86,10 @@ export default function App() {
     () => routeReadiness({ origin: nearby.state, destination: destinationNearby.state }),
     [nearby.state, destinationNearby.state],
   );
-  const routeSearch = useRouteSearch(stops, stopList.status === "ready" ? stopList.routes : null, readiness);
+  // 정류장을 출발지로 골랐고 현재 위치를 알면, 출발 쪽 걷는 거리는 현재 위치에서 승차 정류장까지(TASK-033)
+  // 단, 현재 위치가 고른 정류장에서 2km를 넘으면(다른 곳에서 미리 찾는 경우) 정류장 기준(사용자 지정 2026-10-27, 설정값)
+  const walkFrom = walkFromCurrentLocation(origin, location.state.status === "ok" ? location.state.coordinates : null);
+  const routeSearch = useRouteSearch(stops, stopList.status === "ready" ? stopList.routes : null, readiness, walkFrom);
   // 상세를 연 경로 — 지도에 승차·환승·하차 단계 번호를 표시(TASK-018, D-16)
   const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
   useEffect(() => setSelectedJourneyId(null), [routeSearch.result]);
@@ -296,7 +299,7 @@ export default function App() {
         onSelectJourney={setSelectedJourneyId}
         estimator={journeyTimes.estimator}
         timing={journeyTimes.state}
-        originLabel={origin ? describeOrigin(origin) : "출발지"}
+        originLabel={walkFrom ? "현재 위치" : origin ? describeOrigin(origin) : "출발지"}
         destinationLabel={destination ? describeOrigin(destination) : "목적지"}
       />
       <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
