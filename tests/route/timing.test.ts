@@ -4,7 +4,7 @@ import type { TimedArrival } from "../../shared/arrivals";
 import type { Route } from "../../shared/domain";
 import type { Journey, Leg } from "../../src/route/engine";
 import { buildResultSections } from "../../src/route/ranking";
-import { buildRoutePredictions, journeyTime, realtimeEstimator, walkMinutesOf, type RoutePredictions } from "../../src/route/timing";
+import { buildRoutePredictions, journeyTime, realtimeEstimator, timeUnknownReason, walkMinutesOf, type RoutePredictions } from "../../src/route/timing";
 import { routesToRequest } from "../../src/route/useJourneyTimes";
 
 // 가상 노선(정류장 ID는 가상). GATE-05 §4 예시의 순번·예측 분을 그대로 씀
@@ -109,5 +109,25 @@ describe("예측 조회 노선 고르기 (D-30, 호출량 상한)", () => {
     const js = [journey([leg(R1, 23, 28)], 0, 0), journey([leg(R1, 23, 28), leg(R3, 1, 6)], 0, 0), journey([leg(R2, 66, 71)], 0, 0)];
     expect([...routesToRequest(js, 2)]).toEqual([["R1", "A023"], ["R3", "A028"]]);
     expect([...routesToRequest(js, 3).keys()]).toEqual(["R1", "R3", "R2"]);
+  });
+});
+
+// 시간을 못 낸 이유(TASK-031) — 판정 조건은 journeyTime과 같다
+describe("timeUnknownReason (TASK-031)", () => {
+  it("운행 중 차량 없음 / 다른 차량 / 제때 못 탐 / 조회 안 함 / 계산 가능", () => {
+    const j = journey([leg(R1, 23, 28)], 0, 0);
+    expect(timeUnknownReason(j, new Map())).toEqual({ kind: "not_requested", leg: 0 });
+    expect(timeUnknownReason(j, new Map([["R1", preds(R1, [])]]))).toEqual({ kind: "no_vehicle", leg: 0 });
+    expect(timeUnknownReason(j, new Map([["R1", preds(R1, [row(R1, 23, "V1", 5), row(R1, 28, "V0", 2)])]]))).toEqual({
+      kind: "different_vehicle",
+      leg: 0,
+    });
+    const far = journey([leg(R1, 23, 28)], 400, 0); // 걸어서 약 8분
+    expect(timeUnknownReason(far, new Map([["R1", preds(R1, [row(R1, 23, "V", 3), row(R1, 28, "V", 9)])]]))).toEqual({
+      kind: "cannot_catch",
+      leg: 0,
+      boardMinutes: 3,
+    });
+    expect(timeUnknownReason(j, new Map([["R1", preds(R1, [row(R1, 23, "V", 5), row(R1, 28, "V", 9)])]]))).toBeNull();
   });
 });

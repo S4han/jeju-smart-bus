@@ -337,3 +337,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .result-bar-summary strong { font-size: 20px; color: var(--blue); }
 .result-bar-summary span { font-size: 14px; color: var(--text-2); }
 .result-bar .btn { min-height: 48px; }
+
+.journey-reason { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--orange-weak); color: #8a5300; font-size: 14px; }
+.tl-next.is-none { color: var(--text-3); font-weight: 500; }
+/* 지도 SDK 요소(로고 등)가 펼친 패널 위로 올라오지 않게 지도 영역을 따로 쌓는다 */
+.map-stage { z-index: 0; isolation: isolate; }

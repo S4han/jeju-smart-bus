@@ -74,6 +74,9 @@ export interface TimeEstimator {
   // 검증된 근거로 총 소요시간을 낼 수 없으면 null
   totalTime(journey: Journey): TotalTime | null;
   walkMinutes(journey: Journey): number | null;
+  // 시간을 못 낸 이유·승차 정류장 다음 차 예측(실시간 예측을 불러온 뒤에만) — TASK-031
+  unknownReason?(journey: Journey): import("./timing").TimeUnknownReason | null;
+  boardMinutes?(journey: Journey, leg: number): number | null;
 }
 
 // 실시간 예측을 불러오기 전·실패 시 기본값: 시간 근거 없음 → 모든 경로가 시간 미확인(실시간 예측 산정은 timing.ts)

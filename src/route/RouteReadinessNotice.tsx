@@ -110,7 +110,7 @@ function SearchResults({ result, estimator, timing, selectedJourneyId, onSelectJ
   const selected = shown.find((r) => r.journey.id === selectedJourneyId) ?? shown[0];
   const labelOf = (r: RankedJourney) => {
     const i = sections.recommended.indexOf(r);
-    return i === 0 ? "가장 빠른 경로" : i > 0 ? `추천 ${i + 1}` : "소요시간 미확인";
+    return i === 0 ? "가장 빠른 경로" : i > 0 ? `추천 ${i + 1}` : `경로 ${shown.indexOf(r) + 1}`;
   };
   const routeText = (r: RankedJourney) =>
     r.journey.legs.map((l) => routeNumber(rest.routesById.get(l.routeId), l.routeId)).join(" → ");
@@ -157,6 +157,7 @@ function SearchResults({ result, estimator, timing, selectedJourneyId, onSelectJ
           originLabel={rest.originLabel}
           destinationLabel={rest.destinationLabel}
           now={now}
+          estimator={estimator}
         >
           <Explanation lines={explainJourney(selected, sections.recommended.includes(selected) ? "recommended" : "time_unknown")} />
         </JourneyDetail>

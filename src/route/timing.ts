@@ -88,11 +88,42 @@ export function journeyTime(journey: Journey, predictions: ReadonlyMap<RouteId, 
   return { total, walkMinutes: w0 + w1, originWalkMinutes: w0 };
 }
 
+// 소요시간을 계산하지 못한 이유(TASK-031) — 화면 안내용. 판정 조건은 journeyTime과 같다
+export type TimeUnknownReason =
+  | { kind: "not_requested"; leg: number }
+  | { kind: "no_vehicle"; leg: number }
+  | { kind: "different_vehicle"; leg: number }
+  | { kind: "cannot_catch"; leg: number; boardMinutes: number };
+
+export function timeUnknownReason(journey: Journey, predictions: ReadonlyMap<RouteId, RoutePredictions>): TimeUnknownReason | null {
+  const w0 = walkMinutesOf(journey.originWalkMeters);
+  let arrival = 0;
+  for (let k = 0; k < journey.legs.length; k++) {
+    const leg = journey.legs[k];
+    const preds = predictions.get(leg.routeId);
+    if (!preds) return { kind: "not_requested", leg: k };
+    const board = preds.get(leg.boardOrder);
+    const alight = preds.get(leg.alightOrder);
+    if (!board) return { kind: "no_vehicle", leg: k };
+    if (!alight || board.vehicleId !== alight.vehicleId || alight.minutes < board.minutes) return { kind: "different_vehicle", leg: k };
+    if (k === 0 ? w0 + BOARD_MARGIN_MINUTES > board.minutes : board.minutes < arrival + TRANSFER_MARGIN_MINUTES)
+      return { kind: "cannot_catch", leg: k, boardMinutes: board.minutes };
+    arrival = alight.minutes;
+  }
+  return null;
+}
+
 export function realtimeEstimator(predictions: ReadonlyMap<RouteId, RoutePredictions>): TimeEstimator {
   const cache = new Map<string, JourneyTime | null>();
   const get = (j: Journey) => {
     if (!cache.has(j.id)) cache.set(j.id, journeyTime(j, predictions));
     return cache.get(j.id)!;
   };
-  return { totalTime: (j) => get(j)?.total ?? null, walkMinutes: (j) => get(j)?.walkMinutes ?? null };
+  return {
+    totalTime: (j) => get(j)?.total ?? null,
+    walkMinutes: (j) => get(j)?.walkMinutes ?? null,
+    unknownReason: (j) => timeUnknownReason(j, predictions),
+    // 구간별 승차 정류장의 다음 차량 도착 예측(분) — 총 시간을 못 내도 보여 줄 수 있는 실시간 값
+    boardMinutes: (j, leg) => predictions.get(j.legs[leg].routeId)?.get(j.legs[leg].boardOrder)?.minutes ?? null,
+  };
 }
