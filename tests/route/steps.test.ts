@@ -4,7 +4,7 @@ import type { Route, Stop } from "../../shared/domain";
 import { findJourneys, indexRoutes, type Journey } from "../../src/route/engine";
 import { explainJourney } from "../../src/route/explain";
 import { sumTime, type RankedJourney } from "../../src/route/ranking";
-import { journeySteps, stepPoints, viaStops } from "../../src/route/steps";
+import { journeyStopPath, journeySteps, stepPoints, viaStops } from "../../src/route/steps";
 import { journeyMapItems } from "../../src/stops/mapItems";
 import { toMarkerInputs, markerHtml } from "../../src/map/markers";
 
@@ -120,5 +120,21 @@ describe("경유 정류장 (TASK-029)", () => {
     // 지도 항목: 경유는 kind "via", 선 없음
     const items = journeyMapItems([], null, null, viaStops(journey, stops, routes));
     expect(items.map((i) => i.kind)).toEqual(["via", "via"]);
+  });
+});
+
+describe("정류장 순서 연결선 (D-33)", () => {
+  const st = (id: string, c: boolean) => ({ id, name: id, coordinates: c ? { lat: 33.5 + id.charCodeAt(0) / 1000, lng: 126.5 } : null });
+  const routes = new Map([["R", { id: "R", name: "1", subName: "", type: "", stopIds: ["A", "B", "C", "D", "E"] }]]);
+  const leg = { routeId: "R", boardStopId: "A", boardOrder: 1, alightStopId: "E", alightOrder: 5 };
+  const journey = { id: "x", legs: [leg], transfers: 0, originWalkMeters: 0, destinationWalkMeters: 0, walkMeters: 0, rideStops: 4 };
+  it("승차~하차를 정차 순서대로 잇고, 좌표 없는 정류장에서 끊는다", () => {
+    const stops = new Map(["A", "B", "C", "D", "E"].map((id) => [id, st(id, id !== "C")] as const));
+    const paths = journeyStopPath(journey, stops, routes);
+    expect(paths.map((p) => p.length)).toEqual([2, 2]);
+  });
+  it("노선 순번이 경로와 맞지 않으면 그리지 않는다", () => {
+    const stops = new Map(["A", "B", "C", "D", "E"].map((id) => [id, st(id, true)] as const));
+    expect(journeyStopPath({ ...journey, legs: [{ ...leg, alightOrder: 4 }] }, stops, routes)).toEqual([]);
   });
 });

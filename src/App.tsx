@@ -17,7 +17,7 @@ import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
 import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
-import { stepPoints, viaStops } from "./route/steps";
+import { journeyStopPath, stepPoints, viaStops } from "./route/steps";
 import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
@@ -101,9 +101,15 @@ export default function App() {
   );
   const selectedPoints = useMemo(() => (selectedJourney ? stepPoints(selectedJourney, stopsById) : null), [selectedJourney, stopsById]);
   // 경유 정류장(TASK-029): 노선 정차 순서대로, 지도에 작은 점으로
+  const routeIndex = useMemo(() => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []), [stopList]);
   const selectedVia = useMemo(
-    () => (selectedJourney && stopList.status === "ready" ? viaStops(selectedJourney, stopsById, new Map(stopList.routes.map((r) => [r.id, r] as const))) : []),
-    [selectedJourney, stopsById, stopList],
+    () => (selectedJourney ? viaStops(selectedJourney, stopsById, routeIndex) : []),
+    [selectedJourney, stopsById, routeIndex],
+  );
+  // 정류장 순서 연결선(D-33) — 실제 도로 궤적 아님, 지도에 표기
+  const selectedPaths = useMemo(
+    () => (selectedJourney ? journeyStopPath(selectedJourney, stopsById, routeIndex) : []),
+    [selectedJourney, stopsById, routeIndex],
   );
   const items = useMemo(() => {
     if (!hasPlace) return POC_ITEMS;
@@ -128,10 +134,7 @@ export default function App() {
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
     [nearby.state, selectedStopId],
   );
-  const routesById = useMemo(
-    () => new Map(stopList.status === "ready" ? stopList.routes.map((r) => [r.id, r] as const) : []),
-    [stopList],
-  );
+  const routesById = routeIndex;
   // 결과 상위 경로의 노선 실시간 예측으로 총 소요시간 계산(TASK-017, GATE-05, D-30)
   const journeyTimes = useJourneyTimes(ARRIVAL_SOURCE, routeSearch.result, routesById);
   const arrivals = useArrivals(ARRIVAL_SOURCE, selectedStop?.id ?? null);
@@ -336,9 +339,17 @@ export default function App() {
       fitBounds={fitBounds}
       fitPadding={layout === "side" ? SIDE_MAP_PADDING : SHEET_MAP_PADDING}
       focus={selectedStop?.coordinates ?? null}
+      stopPaths={selectedPaths}
       onMapClick={pickTarget ? handleMapClick : undefined}
       ariaLabel="제주 지도"
     />
+  );
+  // 연결선을 그릴 때 실제 도로 경로가 아님을 지도 위에 표기(D-33). NAVER 로고와 겹치지 않게 위쪽 오른편
+  const pathLegend = selectedPaths.length > 0 && (
+    <p className="route-legend">
+      <span className="route-legend-line" aria-hidden="true" />
+      정류장 순서 연결 · 실제 도로 경로 아님
+    </p>
   );
   const mapCaption = (
     <div className="map-caption">
@@ -366,6 +377,7 @@ export default function App() {
         </aside>
         <section className="map-stage" aria-label="지도">
           {mapView}
+          {pathLegend}
         </section>
       </div>
     );
@@ -377,6 +389,7 @@ export default function App() {
       <h1 className="visually-hidden">제주 스마트 버스</h1>
       <section className="map-stage" aria-label="지도">
         {mapView}
+        {pathLegend}
         {sheet !== "full" && trip(true)}
       </section>
       <BottomSheet snap={sheet} onSnapChange={setSheet} label="버스 정보 패널">
