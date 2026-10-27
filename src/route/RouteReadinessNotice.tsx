@@ -240,6 +240,16 @@ function StepList({ steps }: { steps: Step[] }) {
                 {i === 1 && <span className="route-step-num">{number}</span>}
                 {stopLabel(step.stop)}에서 {step.routeName ?? `노선 ${step.routeId}`} 승차
                 {step.towards && ` (${stopLabel(step.towards)} 방면)`} — {step.stopsToRide}개 정류장 이동
+                {step.via.length > 0 && (
+                  <details className="route-via">
+                    <summary>경유 정류장 {step.via.length}곳 보기</summary>
+                    <ol>
+                      {step.via.map((v, j) => (
+                        <li key={`${v.id}-${j}`}>{stopLabel(v)}</li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
               </li>
             );
           case "transfer":

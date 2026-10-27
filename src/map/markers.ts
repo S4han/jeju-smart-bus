@@ -4,7 +4,7 @@
 import type { Coordinates } from "../../shared/domain";
 
 // kind가 없으면 SDK 기본 마커(PoC 그대로), origin·destination·stop은 서로 구분되는 모양으로 그린다(TASK-013·015)
-export type MapItemKind = "origin" | "destination" | "stop" | "step";
+export type MapItemKind = "origin" | "destination" | "stop" | "step" | "via";
 
 export interface MapItem {
   id: string;
@@ -50,6 +50,9 @@ export function markerHtml(input: MarkerInput, selected: boolean): string | null
   if (input.kind === "destination") return '<div class="map-marker map-marker-destination" aria-hidden="true">도착</div>';
   if (input.kind === "step" && Number.isInteger(input.stepNumber))
     return `<div class="map-marker map-marker-step-wrap" aria-hidden="true"><div class="map-marker-step">${input.stepNumber}</div>${label(input.title.replace(/^\d+\.\s*/, ""))}</div>`;
+  // 경유 정류장(TASK-029): 작은 흰 점 + 이름(축소하면 이름 숨김)
+  if (input.kind === "via")
+    return `<div class="map-marker map-marker-via-wrap" aria-hidden="true"><div class="map-marker-via"></div>${label(input.title)}</div>`;
   if (input.kind === "stop")
     return `<div class="map-marker map-marker-stop-wrap${selected ? " is-selected" : ""}" aria-hidden="true"><div class="map-marker-stop${selected ? " is-selected" : ""}"></div>${label(input.title)}</div>`;
   return null;

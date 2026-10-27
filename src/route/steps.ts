@@ -21,6 +21,8 @@ export type Step =
       // 이 노선 데이터의 마지막 정류장(운행 순서상 종점) — 방면 안내용
       towards: StopRef | null;
       stopsToRide: number;
+      // 타고 가며 지나는 정류장(승차·하차 제외, 노선 정차 순서 그대로) — TASK-029
+      via: StopRef[];
     }
   | { kind: "transfer"; stop: StopRef }
   | { kind: "alight"; stop: StopRef }
@@ -50,11 +52,29 @@ export function journeySteps(
       routeName: route?.name ?? null,
       towards: end ? ref(end) : null,
       stopsToRide: leg.alightOrder - leg.boardOrder,
+      via: legViaIds(leg, routesById).map(ref),
     });
   });
   steps.push({ kind: "alight", stop: ref(last.alightStopId) });
   steps.push({ kind: "walk_to_destination", meters: journey.destinationWalkMeters, from: ref(last.alightStopId) });
   return steps;
+}
+
+// 한 구간에서 지나는 정류장 ID(승차·하차 제외). 노선 데이터의 승차·하차 순번이 경로와 맞지 않으면 만들지 않는다(빈 목록)
+function legViaIds(leg: Journey["legs"][number], routesById: ReadonlyMap<RouteId, Route>): StopId[] {
+  const ids = routesById.get(leg.routeId)?.stopIds;
+  if (!ids || ids[leg.boardOrder - 1] !== leg.boardStopId || ids[leg.alightOrder - 1] !== leg.alightStopId) return [];
+  return ids.slice(leg.boardOrder, leg.alightOrder - 1);
+}
+
+// 지도에 작게 표시할 경유 정류장(모든 구간, 탑승 순서대로)
+export function viaStops(journey: Journey, stopsById: ReadonlyMap<StopId, Stop>, routesById: ReadonlyMap<RouteId, Route>): StopRef[] {
+  return journey.legs.flatMap((leg) =>
+    legViaIds(leg, routesById).map((id) => {
+      const s = stopsById.get(id);
+      return { id, name: s?.name ?? null, coordinates: s?.coordinates ?? null };
+    }),
+  );
 }
 
 // 지도에 번호를 붙일 정류장 지점: 승차 → 환승 → 하차 순(같은 정류장이 이어지면 한 번만)

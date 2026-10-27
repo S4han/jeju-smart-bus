@@ -277,3 +277,15 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .route-more > summary, .route-explain summary { cursor: pointer; color: var(--blue); font-weight: 600; font-size: 15px; padding: 10px 0; list-style-position: inside; }
 .route-explain summary { font-size: 14px; padding: 6px 0 0; }
 .route-explain-head { color: var(--text-2); }
+
+/* 경유 정류장(TASK-029): 지도엔 작은 흰 점(보라 테두리)+이름, 상세엔 펼쳐 보는 목록. 정류장 사이 선은 그리지 않음(D-16) */
+.map-marker-via-wrap { position: relative; width: 14px; height: 14px; }
+.map-marker-via { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--purple); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.map-marker-via-wrap .map-marker-label { font-size: 11px; font-weight: 500; color: var(--text-2); }
+.hide-marker-labels .map-marker-via-wrap .map-marker-label { display: none; }
+.route-via { margin-top: 6px; }
+.route-via summary { cursor: pointer; color: var(--blue); font-size: 14px; font-weight: 600; padding: 4px 0; }
+.route-via ol { margin: 6px 0 0; padding-left: 20px; color: var(--text-2); font-size: 14px; display: grid; gap: 2px; }
+.route-via li::before { content: none; }
+.route-steps .route-via li { padding: 0; font-size: 14px; color: var(--text-2); }
+.route-steps .route-via li::before, .route-steps .route-via li::after { content: none; display: none; }

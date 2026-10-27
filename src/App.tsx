@@ -17,7 +17,7 @@ import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
 import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf } from "./stops/mapItems";
-import { stepPoints } from "./route/steps";
+import { stepPoints, viaStops } from "./route/steps";
 import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { routeReadiness, type EndpointKey } from "./route/candidates";
@@ -95,16 +95,22 @@ export default function App() {
 
   // 출발지·목적지 전에는 PoC 화면 그대로(제주시 마커), 정해지면 출발지·목적지·출발지 주변 정류장만
   const hasPlace = origin !== null || destination !== null;
-  const selectedPoints = useMemo(() => {
-    const journey = routeSearch.result?.status === "ok" ? routeSearch.result.journeys.find((j) => j.id === selectedJourneyId) : undefined;
-    return journey ? stepPoints(journey, stopsById) : null;
-  }, [routeSearch.result, selectedJourneyId, stopsById]);
+  const selectedJourney = useMemo(
+    () => (routeSearch.result?.status === "ok" ? routeSearch.result.journeys.find((j) => j.id === selectedJourneyId) : undefined),
+    [routeSearch.result, selectedJourneyId],
+  );
+  const selectedPoints = useMemo(() => (selectedJourney ? stepPoints(selectedJourney, stopsById) : null), [selectedJourney, stopsById]);
+  // 경유 정류장(TASK-029): 노선 정차 순서대로, 지도에 작은 점으로
+  const selectedVia = useMemo(
+    () => (selectedJourney && stopList.status === "ready" ? viaStops(selectedJourney, stopsById, new Map(stopList.routes.map((r) => [r.id, r] as const))) : []),
+    [selectedJourney, stopsById, stopList],
+  );
   const items = useMemo(() => {
     if (!hasPlace) return POC_ITEMS;
     const o = origin?.coordinates ?? null;
     const d = destination?.coordinates ?? null;
-    return selectedPoints ? journeyMapItems(selectedPoints, o, d) : nearbyMapItems(nearby.state, o, d);
-  }, [hasPlace, selectedPoints, nearby.state, origin, destination]);
+    return selectedPoints ? journeyMapItems(selectedPoints, o, d, selectedVia) : nearbyMapItems(nearby.state, o, d);
+  }, [hasPlace, selectedPoints, selectedVia, nearby.state, origin, destination]);
   const fitBounds = useMemo(
     () =>
       hasPlace
@@ -112,11 +118,11 @@ export default function App() {
             ...(origin ? [origin.coordinates] : []),
             ...(destination ? [destination.coordinates] : []),
             ...(selectedPoints
-              ? selectedPoints.flatMap((p) => (p.stop.coordinates ? [p.stop.coordinates] : []))
+              ? [...selectedPoints.map((p) => p.stop), ...selectedVia].flatMap((p) => (p.coordinates ? [p.coordinates] : []))
               : nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)),
           ])
         : null,
-    [hasPlace, origin, destination, nearby.state, selectedPoints],
+    [hasPlace, origin, destination, nearby.state, selectedPoints, selectedVia],
   );
   const selectedStop = useMemo(
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
