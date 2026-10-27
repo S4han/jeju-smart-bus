@@ -19,10 +19,13 @@ interface OriginPanelProps {
   mapPickAvailable: boolean;
   picking: boolean;
   onPickingChange: (picking: boolean) => void;
+  // 출발지를 정한 뒤에는 접어 두고 "변경"을 눌렀을 때만 선택 화면을 연다(TASK-028)
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
 }
 
 export function OriginPanel(props: OriginPanelProps) {
-  const { origin, onChange, location, onRequestLocation, stopList, mapPickAvailable, picking, onPickingChange } = props;
+  const { origin, onChange, location, onRequestLocation, stopList, mapPickAvailable, picking, onPickingChange, editing, onEditingChange } = props;
   const [manual, setManual] = useState(false);
   const failed = location.status !== "idle" && location.status !== "requesting" && location.status !== "ok";
 
@@ -31,12 +34,40 @@ export function OriginPanel(props: OriginPanelProps) {
     if (location.status === "ok") onChange(originFromCurrentLocation(location.coordinates));
   }, [location, onChange]);
 
+  if (origin && !editing) {
+    return (
+      <section className="origin is-compact" aria-labelledby="origin-title">
+        <h2 id="origin-title">출발지</h2>
+        <div className="place-summary">
+          <p aria-live="polite" className="origin-current">
+            {describeOrigin(origin)}
+          </p>
+          <button type="button" className="btn btn-secondary btn-small" onClick={() => onEditingChange(true)}>
+            변경
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="origin" aria-labelledby="origin-title">
       <h2 id="origin-title">출발지</h2>
       <p aria-live="polite" className="origin-current">
-        {origin ? `출발지: ${describeOrigin(origin)}` : "출발지를 아직 정하지 않았습니다."}
+        {origin ? `지금: ${describeOrigin(origin)}` : "출발지를 아직 정하지 않았습니다."}
       </p>
+      {origin && (
+        <div className="place-edit-actions">
+          {location.status === "ok" && origin.kind !== "current_location" && (
+            <button type="button" className="link-button is-strong" onClick={() => onChange(originFromCurrentLocation(location.coordinates))}>
+              현재 위치로
+            </button>
+          )}
+          <button type="button" className="link-button" onClick={() => onEditingChange(false)}>
+            변경 취소
+          </button>
+        </div>
+      )}
 
       {location.status === "idle" && !manual && (
         <div className="origin-notice">
@@ -75,6 +106,7 @@ export function OriginPanel(props: OriginPanelProps) {
           mapPickAvailable={mapPickAvailable}
           picking={picking}
           onPickingChange={onPickingChange}
+          distanceFrom={location.status === "ok" ? location.coordinates : null}
         >
           {manual && location.status === "idle" && (
             <button type="button" className="link-button" onClick={onRequestLocation}>

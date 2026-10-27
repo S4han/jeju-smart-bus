@@ -77,14 +77,22 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!maps || !map || !focus) return;
+    if (!maps || !map || !focus || typeof map.getProjection !== "function") return;
+    // 확대 수준은 바꾸지 않는다. 지점이 여백 안쪽에 보이면 그대로, 아니면 여백 안쪽 가운데로 옮긴다
+    // (panToBounds는 크기 0인 범위를 최대로 확대해 쓰지 않는다 — TASK-027)
     const point = new maps.LatLng(focus.lat, focus.lng);
-    if (typeof map.panToBounds === "function") {
-      // 확대 수준은 그대로, 지점이 여백 안쪽에 보이도록 필요한 만큼만 이동
-      map.panToBounds(new maps.LatLngBounds(point, point), {}, fitPadding);
-    } else {
-      map.panTo(point);
-    }
+    const projection = map.getProjection();
+    const size = map.getSize();
+    const p = projection.fromCoordToOffset(point);
+    const c = projection.fromCoordToOffset(map.getCenter());
+    const pad = fitPadding;
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+    const visible =
+      dx >= -size.width / 2 + pad.left && dx <= size.width / 2 - pad.right && dy >= -size.height / 2 + pad.top && dy <= size.height / 2 - pad.bottom;
+    if (visible) return;
+    const target = projection.fromOffsetToCoord(new maps.Point(p.x - (pad.left - pad.right) / 2, p.y - (pad.top - pad.bottom) / 2));
+    map.panTo(target);
     // 선택이 바뀔 때만 옮긴다(여백 변경만으로는 옮기지 않음)
   }, [maps, focus?.lat, focus?.lng]);
 

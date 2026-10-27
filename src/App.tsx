@@ -12,7 +12,7 @@ import { STATUS_MESSAGES } from "./map/naverSdk";
 import { useMapConsent } from "./map/useMapConsent";
 import { useNaverMaps } from "./map/useNaverMaps";
 import { OriginPanel } from "./origin/OriginPanel";
-import { describeOrigin, originFromMapPoint, type Origin } from "./origin/origin";
+import { describeOrigin, originFromMapPoint, originFromStop, type Origin } from "./origin/origin";
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
@@ -51,6 +51,16 @@ export default function App() {
   // 출발지 좌표는 이 메모리 상태로만 둔다 — URL·저장소·서버로 보내지 않는다(TASK-011, PRIV-001~003)
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [destination, setDestination] = useState<Origin | null>(null);
+  // 출발지·목적지 선택 화면 열림 여부 — 정하면 접고 "변경"으로 연다(TASK-028)
+  const [editing, setEditing] = useState<Record<EndpointKey, boolean>>({ origin: false, destination: false });
+  const chooseOrigin = useCallback((place: Origin | null) => {
+    setOrigin(place);
+    if (place) setEditing((e) => ({ ...e, origin: false }));
+  }, []);
+  const chooseDestination = useCallback((place: Origin | null) => {
+    setDestination(place);
+    if (place) setEditing((e) => ({ ...e, destination: false }));
+  }, []);
   // 지도 직접 지정 대상(출발지·목적지 중 하나만)
   const [pickTarget, setPickTarget] = useState<EndpointKey | null>(null);
   const location = useCurrentLocation();
@@ -59,11 +69,11 @@ export default function App() {
 
   const handleMapClick = useCallback(
     (coordinates: Coordinates) => {
-      if (pickTarget === "origin") setOrigin(originFromMapPoint(coordinates));
-      if (pickTarget === "destination") setDestination(originFromMapPoint(coordinates));
+      if (pickTarget === "origin") chooseOrigin(originFromMapPoint(coordinates));
+      if (pickTarget === "destination") chooseDestination(originFromMapPoint(coordinates));
       setPickTarget(null);
     },
-    [pickTarget],
+    [pickTarget, chooseOrigin, chooseDestination],
   );
 
   // 지도와 목록은 같은 결과 상태를 쓴다(TASK-013, AC-004)
@@ -149,28 +159,90 @@ export default function App() {
     if (selectedJourneyId || pickTarget) setSheet("peek");
   }, [selectedJourneyId, pickTarget]);
 
+  // 요약 카드에서 출발·도착을 누르면 패널을 펴고 해당 선택 화면을 연다
+  const openEditor = (key: EndpointKey) => {
+    setSheet("full");
+    setEditing((e) => ({ ...e, [key]: true }));
+  };
+  const swapPlaces = () => {
+    setOrigin(destination);
+    setDestination(origin);
+  };
+  // 경로 찾기 결과가 나오면 패널을 펴고 결과로 이동(TASK-028)
+  useEffect(() => {
+    if (!routeSearch.result) return;
+    setSheet("full");
+    requestAnimationFrame(() => document.getElementById("route-results")?.scrollIntoView?.({ block: "start" }));
+  }, [routeSearch.result]);
+
   const trip = (floating: boolean) => (
     <nav className={floating ? "trip is-floating" : "trip"} aria-label="출발지·목적지 요약">
-      <a className="trip-row" href="#origin-title" onClick={() => setSheet("full")}>
+      <div className="trip-rows">
+      <a className="trip-row" href="#origin-title" onClick={() => openEditor("origin")}>
         <span className="trip-dot" aria-hidden="true" />
         <span className="trip-label">출발</span>
         <span className={describe(origin) ? "trip-value" : "trip-value is-empty"}>{describe(origin) ?? "출발지를 정해 주세요"}</span>
         <span className="trip-chevron" aria-hidden="true">›</span>
       </a>
-      <a className="trip-row is-destination" href="#destination-title" onClick={() => setSheet("full")}>
+      <a className="trip-row is-destination" href="#destination-title" onClick={() => openEditor("destination")}>
         <span className="trip-dot" aria-hidden="true" />
         <span className="trip-label">도착</span>
         <span className={describe(destination) ? "trip-value" : "trip-value is-empty"}>{describe(destination) ?? "목적지를 정해 주세요"}</span>
         <span className="trip-chevron" aria-hidden="true">›</span>
       </a>
+      </div>
+      {(origin || destination) && (
+        <button type="button" className="trip-swap" aria-label="출발지와 목적지 바꾸기" onClick={swapPlaces}>
+          <span aria-hidden="true">⇅</span>
+        </button>
+      )}
     </nav>
   );
 
+  // 지도·목록에서 고른 정류장: 맨 위에 도착정보와 함께 "출발지로·도착지로" 버튼(TASK-027)
+  const isOriginStop = (id: string) => origin?.kind === "stop" && origin.stopId === id;
+  const isDestinationStop = (id: string) => destination?.kind === "stop" && destination.stopId === id;
+  const selectedStopPanel = selectedStop && (
+    <ArrivalPanel
+      stop={selectedStop}
+      state={arrivals.state}
+      routesById={routesById}
+      onRefresh={arrivals.refresh}
+      actions={
+        <div className="stop-actions">
+          <button
+            type="button"
+            className="btn btn-block btn-weak"
+            disabled={isOriginStop(selectedStop.id)}
+            onClick={() => chooseOrigin(originFromStop(selectedStop))}
+          >
+            {isOriginStop(selectedStop.id) ? "출발지로 정함" : "출발지로"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-block btn-destination"
+            disabled={isDestinationStop(selectedStop.id)}
+            onClick={() => chooseDestination(originFromStop(selectedStop))}
+          >
+            {isDestinationStop(selectedStop.id) ? "도착지로 정함" : "도착지로"}
+          </button>
+        </div>
+      }
+    />
+  );
+  // 정류장을 고르면 패널을 그 카드 위치로 스크롤
+  useEffect(() => {
+    if (selectedStopId) document.getElementById("arrivals-title")?.closest("section")?.scrollIntoView?.({ block: "start" });
+  }, [selectedStopId]);
+
   const panels = (
     <>
+      {selectedStopPanel}
       <OriginPanel
         origin={origin}
-        onChange={setOrigin}
+        onChange={chooseOrigin}
+        editing={editing.origin}
+        onEditingChange={(on) => setEditing((e) => ({ ...e, origin: on }))}
         location={location.state}
         onRequestLocation={location.request}
         stopList={stopList}
@@ -187,12 +259,12 @@ export default function App() {
           onSelect={setSelectedStopId}
         />
       )}
-      {selectedStop && (
-        <ArrivalPanel stop={selectedStop} state={arrivals.state} routesById={routesById} onRefresh={arrivals.refresh} />
-      )}
       <DestinationPanel
         destination={destination}
-        onChange={setDestination}
+        onChange={chooseDestination}
+        editing={editing.destination}
+        onEditingChange={(on) => setEditing((e) => ({ ...e, destination: on }))}
+        distanceFrom={origin?.coordinates ?? null}
         stopList={stopList}
         mapPickAvailable={mapPickAvailable}
         picking={pickTarget === "destination" && mapPickAvailable}
@@ -299,11 +371,12 @@ export default function App() {
       <h1 className="visually-hidden">제주 스마트 버스</h1>
       <section className="map-stage" aria-label="지도">
         {mapView}
-        {trip(true)}
+        {sheet !== "full" && trip(true)}
       </section>
       <BottomSheet snap={sheet} onSnapChange={setSheet} label="버스 정보 패널">
         <ServiceNotices notices={notices} />
-        {sheet === "full" && hero}
+        {/* 펼치면 지도 위 요약 카드가 가려지므로 패널 안에 같은 요약을 둔다 */}
+        {sheet === "full" && trip(false)}
         {panels}
         {mapCaption}
       </BottomSheet>

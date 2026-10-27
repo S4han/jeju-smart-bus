@@ -2,9 +2,12 @@
 // 목록에서 고른 정류장·지도에서 누른 지점만 장소가 된다. 입력만 한 글자는 장소가 아니다(AC-002·AC-006).
 
 import { useId, useMemo, useState, type ReactNode } from "react";
+import type { Coordinates } from "../../shared/domain";
+import { haversineMeters } from "../../shared/geo";
+import { formatDistance } from "../stops/nearby";
 import type { Origin } from "./origin";
 import { originFromStop } from "./origin";
-import { searchStops } from "./stopSearch";
+import { nextStopNames, searchStops } from "./stopSearch";
 import type { StopListState } from "./useStopNames";
 
 interface PlacePickerProps {
@@ -15,13 +18,27 @@ interface PlacePickerProps {
   mapPickAvailable: boolean;
   picking: boolean;
   onPickingChange: (picking: boolean) => void;
+  // 결과에 거리를 보여 줄 기준 위치(메모리 상태만, 출발지 검색은 현재 위치·목적지 검색은 출발지) — TASK-028
+  distanceFrom?: Coordinates | null;
   children?: ReactNode;
 }
 
-export function PlacePicker({ label, stopList, onSelect, mapPickAvailable, picking, onPickingChange, children }: PlacePickerProps) {
+const formatPlaceDistance = (m: number) => (m < 1000 ? formatDistance(m) : `${(m / 1000).toFixed(1)}km`);
+
+export function PlacePicker({ label, stopList, onSelect, mapPickAvailable, picking, onPickingChange, distanceFrom = null, children }: PlacePickerProps) {
   const inputId = useId();
   const [query, setQuery] = useState("");
   const results = useMemo(() => (stopList.status === "ready" ? searchStops(stopList.stops, query) : []), [stopList, query]);
+  // 같은 이름 정류장이 여러 곳이면 다음 정류장 이름으로 방향을 구분(TASK-028)
+  const nextNames = useMemo(
+    () => (stopList.status === "ready" ? nextStopNames(stopList.routes, new Map(stopList.stops.map((st) => [st.id, st] as const))) : null),
+    [stopList],
+  );
+  const duplicated = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const { stop } of results) count.set(stop.name, (count.get(stop.name) ?? 0) + 1);
+    return count;
+  }, [results]);
 
   return (
     <div className="origin-manual">
@@ -59,9 +76,13 @@ export function PlacePicker({ label, stopList, onSelect, mapPickAvailable, picki
                       <span className="nearby-name">{stop.name}</span>
                       <span className="origin-stop-id">
                         정류장 번호 {stop.id}
+                        {(duplicated.get(stop.name) ?? 0) > 1 && nextNames?.get(stop.id) && ` · 다음 정류장: ${nextNames.get(stop.id)!.slice(0, 2).join("·")}`}
                         {!selectable && " · 위치 확인 불가, 선택할 수 없음"}
                       </span>
                     </span>
+                    {selectable && distanceFrom && stop.coordinates && (
+                      <span className="row-side">{formatPlaceDistance(haversineMeters(distanceFrom, stop.coordinates))}</span>
+                    )}
                     {selectable && (
                       <span className="row-chevron" aria-hidden="true">
                         ›

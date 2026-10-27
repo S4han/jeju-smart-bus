@@ -157,7 +157,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .route-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 6px; background: var(--card); color: var(--blue); font-size: 12px; font-weight: 700; }
 .route-meta { margin-top: 8px; color: var(--text-2); font-size: 14px; }
 .route-item > .link-button { margin-top: 8px; color: var(--blue); text-decoration: none; font-weight: 600; font-size: 15px; }
-.route-explain { margin: 12px 0 0; padding: 14px 16px; list-style: none; border-radius: 14px; background: var(--card); color: var(--text-2); font-size: 14px; display: grid; gap: 6px; }
+.route-explain ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.route-explain { margin: 12px 0 0; padding: 14px 16px; border-radius: 14px; background: var(--card); color: var(--text-2); font-size: 14px; display: grid; gap: 6px; }
 .route-explain li { padding-left: 12px; position: relative; }
 .route-explain li::before { content: ""; position: absolute; left: 0; top: .65em; width: 4px; height: 4px; border-radius: 50%; background: var(--text-3); }
 
@@ -207,7 +208,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .sheet { position: absolute; z-index: 20; left: 0; right: 0; bottom: 0; height: var(--peek); display: flex; flex-direction: column; background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(0, 0, 0, .08); transition: height .25s ease; }
 .sheet.is-full { height: 100dvh; border-radius: 0; }
 .sheet.is-dragging { transition: none; }
-.sheet-handle { flex: none; display: flex; justify-content: center; width: 100%; padding: 10px 0 8px; border: 0; background: transparent; cursor: grab; touch-action: none; }
+.sheet-handle { flex: none; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; padding: 8px 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .sheet-grip { width: 40px; height: 5px; border-radius: 3px; background: #d1d6db; }
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 480px; margin: 0 auto; padding: 0 16px calc(96px + env(safe-area-inset-bottom)); }
 .sheet-body .map-caption { padding: 4px; }
@@ -253,3 +254,26 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .map-marker-stop-wrap.is-selected .map-marker-label { color: var(--red); font-size: 13px; font-weight: 700; max-width: 12em; -webkit-line-clamp: 3; }
 .map-marker-step-wrap .map-marker-label { color: var(--purple); font-weight: 700; max-width: 10em; -webkit-line-clamp: 3; }
 .hide-marker-labels .map-marker-stop-wrap:not(.is-selected) .map-marker-label { display: none; }
+
+/* 고른 정류장의 출발지로·도착지로 버튼(TASK-027) */
+.stop-actions { display: flex; gap: 8px; margin: 12px 0 8px; }
+.btn-destination { background: var(--red-weak); color: var(--red); }
+.stop-actions .btn:disabled { opacity: .55; cursor: default; }
+
+/* 사용성 묶음 개선(TASK-028) */
+.trip { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.trip-rows { min-width: 0; }
+.trip-swap { width: 44px; height: 44px; margin-left: 2px; border: 0; border-radius: 50%; background: var(--fill); color: var(--text-2); font-size: 20px; line-height: 1; cursor: pointer; }
+.origin.is-compact { padding-top: 18px; padding-bottom: 18px; }
+.place-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.place-summary .origin-current { font-size: 17px; font-weight: 600; color: var(--text); min-width: 0; }
+.btn-small { min-height: 40px; padding: 0 16px; font-size: 15px; flex: none; }
+.place-edit-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+.link-button { min-height: 44px; }
+.map-caption .link-button { min-height: 32px; }
+.route-research { margin-top: 16px; }
+.nearby-more { margin-top: 8px; min-height: 44px; }
+.route-more { margin-top: 16px; }
+.route-more > summary, .route-explain summary { cursor: pointer; color: var(--blue); font-weight: 600; font-size: 15px; padding: 10px 0; list-style-position: inside; }
+.route-explain summary { font-size: 14px; padding: 6px 0 0; }
+.route-explain-head { color: var(--text-2); }

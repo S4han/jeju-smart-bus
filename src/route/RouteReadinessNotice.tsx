@@ -47,13 +47,24 @@ export function RouteReadinessNotice({ readiness, canSearch, onSearch, result, .
             )}
           </ul>
         )}
-        {result && <SearchResults result={result} {...rest} />}
+        {result && (
+          <div id="route-results" className="route-results">
+            <SearchResults result={result} {...rest} />
+          </div>
+        )}
       </div>
-      <div className="cta-bar">
-        <button type="button" className="route-search-button" disabled={!canSearch} onClick={onSearch}>
-          경로 찾기
+      {/* 결과가 나오면 하단 고정 버튼을 치워 결과를 가리지 않게 한다(TASK-028) */}
+      {result ? (
+        <button type="button" className="btn btn-secondary btn-block route-research" disabled={!canSearch} onClick={onSearch}>
+          다시 찾기
         </button>
-      </div>
+      ) : (
+        <div className="cta-bar">
+          <button type="button" className="route-search-button" disabled={!canSearch} onClick={onSearch}>
+            경로 찾기
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -104,18 +115,36 @@ function SearchResults({ result, estimator, timing, ...rest }: SearchResultsProp
       {timing.status === "ready" && timing.failedRoutes > 0 && (
         <p className="route-note">일부 노선({timing.failedRoutes}개)의 실시간 예측을 불러오지 못해 해당 경로는 소요시간 미확인으로 두었습니다.</p>
       )}
-      {sections.timeUnknown.length > 0 && (
-        <>
-          <h3>소요시간 미확인 경로</h3>
-          <p className="route-note">연결이 확인된 경로입니다. 총 소요시간은 확인할 수 없어 표시하지 않습니다. 환승이 적고 걷는 거리가 짧은 순입니다.</p>
-          <ol className="route-list">
-            {sections.timeUnknown.map((r) => (
-              <JourneyItem key={r.journey.id} ranked={r} section="time_unknown" {...rest} />
-            ))}
-          </ol>
-        </>
+      {sections.timeUnknown.length > 0 &&
+        (sections.recommended.length > 0 ? (
+          // 추천 경로가 있으면 시간 미확인 경로는 접어 둔다(목록은 그대로 — AC-016)
+          <details className="route-more">
+            <summary>소요시간 미확인 경로 {sections.timeUnknown.length}개 더 보기</summary>
+            <TimeUnknownList rows={sections.timeUnknown} rest={rest} />
+          </details>
+        ) : (
+          <TimeUnknownList rows={sections.timeUnknown} rest={rest} />
+        ))}
+      {shown.length >= 2 && (
+        <details className="route-more">
+          <summary>경로 비교표 보기</summary>
+          <CompareTable rows={shown} routesById={rest.routesById} />
+        </details>
       )}
-      <CompareTable rows={shown} routesById={rest.routesById} />
+    </>
+  );
+}
+
+function TimeUnknownList({ rows, rest }: { rows: RankedJourney[]; rest: Omit<SearchResultsProps, "result" | "estimator" | "timing"> }) {
+  return (
+    <>
+      <h3>소요시간 미확인 경로</h3>
+      <p className="route-note">연결이 확인된 경로입니다. 총 소요시간은 확인할 수 없어 표시하지 않습니다. 환승이 적고 걷는 거리가 짧은 순입니다.</p>
+      <ol className="route-list">
+        {rows.map((r) => (
+          <JourneyItem key={r.journey.id} ranked={r} section="time_unknown" {...rest} />
+        ))}
+      </ol>
     </>
   );
 }
@@ -167,15 +196,32 @@ function JourneyItem({ ranked, section, routesById, stopsById, selectedJourneyId
       </button>
       {selected && (
         <>
-          <ul className="route-explain">
-            {explainJourney(ranked, section).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+          {/* 어디서 타고 내리는지(단계)를 먼저, 추천 근거(AC-018)는 첫 줄만 보이고 나머지는 펼쳐 보기 */}
           <StepList steps={journeySteps(journey, stopsById, routesById)} />
+          <Explanation lines={explainJourney(ranked, section)} />
         </>
       )}
     </li>
+  );
+}
+
+function Explanation({ lines }: { lines: string[] }) {
+  const [head, ...more] = lines;
+  if (!head) return null;
+  return (
+    <div className="route-explain">
+      <p className="route-explain-head">{head}</p>
+      {more.length > 0 && (
+        <details>
+          <summary>추천 근거 자세히</summary>
+          <ul>
+            {more.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
 
