@@ -5,6 +5,8 @@ import { routeReadiness } from "../../src/route/candidates";
 import { declineExpansion, expandNearby, searchNearby } from "../../src/stops/nearby";
 import { DESTINATION_ITEM_ID, ORIGIN_ITEM_ID, nearbyMapItems } from "../../src/stops/mapItems";
 import { markerHtml, toMarkerInputs } from "../../src/map/markers";
+import { toCandidates } from "../../src/route/useRouteSearch";
+import { haversineMeters } from "../../shared/geo";
 
 const ORIGIN: Coordinates = { lat: 33.5, lng: 126.5 };
 const DEST: Coordinates = { lat: 33.3, lng: 126.6 };
@@ -87,5 +89,21 @@ describe("지도 항목", () => {
 
   it("목적지만 있을 때 목적지 마커만", () => {
     expect(toMarkerInputs(nearbyMapItems(null, null, DEST)).map((i) => i.id)).toEqual([DESTINATION_ITEM_ID]);
+  });
+});
+
+// 정류장 출발지 + 현재 위치: 걷는 거리는 현재 위치에서(TASK-033)
+
+describe("출발 쪽 걷는 거리 기준 (TASK-033)", () => {
+  const stop = { id: "S1", name: "노형초등학교", coordinates: { lat: 33.4846, lng: 126.4772 } };
+  const near = [{ stop, distanceMeters: 0 }];
+  it("기준점이 없으면 주변 정류장 거리 그대로", () => {
+    expect(toCandidates(near, null)).toEqual([{ stopId: "S1", walkMeters: 0 }]);
+  });
+  it("현재 위치를 알면 현재 위치에서 승차 정류장까지 직선거리", () => {
+    const here = { lat: 33.4866, lng: 126.4772 };
+    const [c] = toCandidates(near, here);
+    expect(c.walkMeters).toBeCloseTo(haversineMeters(here, stop.coordinates), 6);
+    expect(c.walkMeters).toBeGreaterThan(200);
   });
 });
