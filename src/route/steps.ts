@@ -118,3 +118,19 @@ export function stepPoints(journey: Journey, stopsById: ReadonlyMap<StopId, Stop
   points.push({ number: points.length + 1, role: "alight", stop: ref(journey.legs[journey.legs.length - 1].alightStopId) });
   return points;
 }
+
+// 노선 전체 정류장 순서 연결선(TASK-037, D-35·D-33): 좌표 없는 정류장에서 끊는다
+export function routeStopPath(route: Route, stopsById: ReadonlyMap<StopId, Stop>): Coordinates[][] {
+  const segments: Coordinates[][] = [];
+  let current: Coordinates[] = [];
+  for (const id of route.stopIds) {
+    const c = stopsById.get(id)?.coordinates;
+    if (c) current.push(c);
+    else {
+      if (current.length >= 2) segments.push(current);
+      current = [];
+    }
+  }
+  if (current.length >= 2) segments.push(current);
+  return segments;
+}

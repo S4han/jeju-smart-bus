@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SNAPSHOT_PATH } from "../shared/sources";
-import type { Coordinates } from "../shared/domain";
+import type { Coordinates, Route, RouteId } from "../shared/domain";
 import { createHttpSnapshotSource } from "./data/httpSnapshotSource";
 import { DataAttribution } from "./data/DataAttribution";
 import { createHttpArrivalSource } from "./data/httpArrivalSource";
@@ -16,9 +16,10 @@ import { describeOrigin, originFromCurrentLocation, originFromMapPoint, originFr
 import { useCurrentLocation } from "./origin/useCurrentLocation";
 import { useStopNames } from "./origin/useStopNames";
 import { NearbyStops } from "./stops/NearbyStops";
-import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf, pickPreviewItems } from "./stops/mapItems";
+import { boundsOf, journeyMapItems, nearbyMapItems, nearbyStopsOf, pickPreviewItems, routeViewItems } from "./stops/mapItems";
 import { findStopsWithin, formatDistance, NEARBY_RADIUS_METERS } from "./stops/nearby";
-import { journeyStopPath, stepPoints, viaStops } from "./route/steps";
+import { journeyStopPath, routeStopPath, stepPoints, viaStops } from "./route/steps";
+import { routeNumber } from "./route/display";
 import { useNearbyStops } from "./stops/useNearbyStops";
 import { DestinationPanel } from "./destination/DestinationPanel";
 import { ENDPOINT_LABEL, routeReadiness, type EndpointKey } from "./route/candidates";
@@ -29,6 +30,9 @@ import { impactNotice, type Cause, type Service } from "./service/impact";
 import { ServiceNotices } from "./service/ServiceNotices";
 import { BottomSheet, type SheetSnap } from "./ui/BottomSheet";
 import { useMapLayout } from "./ui/layout";
+import { RouteStatusPanel } from "./routes/RouteStatusPanel";
+import { matchRoutes } from "./routes/routeStatus";
+import { useRouteStatus } from "./routes/useRouteStatus";
 
 // 지도는 이용 동의 후에만 불러온다(TASK-021, D-27). 지도 동작·상태 문구는 PoC와 같다(TASK-010). 화면 구성은 TASK-022
 const JEJU = { lat: 33.4996, lng: 126.5312 };
@@ -40,6 +44,9 @@ const SIDE_MAP_PADDING = { top: 48, right: 48, bottom: 48, left: 48 };
 
 // 지도에서 고를 때 핀 주변에 미리 보여 줄 정류장 반경(사용자 요청 2026-10-27)
 const PICK_PREVIEW_RADIUS_METERS = 1_000;
+
+const NO_ROUTES: Route[] = [];
+const NO_PATHS: Coordinates[][] = [];
 
 // 정류장·노선 정적 스냅샷(D-01, D-10 (A) 승인) — 빌드 때 생성된 공개 데이터 파일
 const SNAPSHOT_SOURCE = createHttpSnapshotSource(`${import.meta.env.BASE_URL}${SNAPSHOT_PATH}`);
@@ -128,18 +135,43 @@ export default function App() {
     () => (selectedJourney ? journeyStopPath(selectedJourney, stopsById, routeIndex) : []),
     [selectedJourney, stopsById, routeIndex],
   );
+  // 노선 운행 현황(TASK-037, D-35): 화면 모드, 노선 번호 검색(입력 멈춘 뒤 조회), 지도에 보일 세부 노선
+  const [mode, setMode] = useState<"trip" | "route">("trip");
+  const [routeQuery, setRouteQuery] = useState("");
+  const [routeQueryDebounced, setRouteQueryDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setRouteQueryDebounced(routeQuery), 400);
+    return () => clearTimeout(t);
+  }, [routeQuery]);
+  const routeMatches = useMemo(
+    () => (stopList.status === "ready" ? matchRoutes(stopList.routes, routeQueryDebounced) : NO_ROUTES),
+    [stopList, routeQueryDebounced],
+  );
+  const routeStatus = useRouteStatus(ARRIVAL_SOURCE, mode === "route" ? routeMatches : NO_ROUTES);
+  const [routeViewId, setRouteViewId] = useState<RouteId | null>(null);
+  useEffect(() => setRouteViewId(null), [routeQueryDebounced]);
+  const routeView = mode === "route" && routeViewId ? routeIndex.get(routeViewId) : undefined;
+  const routeViewVehicles = useMemo(() => {
+    const st = routeView ? routeStatus.statuses.get(routeView.id) : undefined;
+    return st?.status === "ok" ? st.vehicles : [];
+  }, [routeView, routeStatus.statuses]);
+  const routeViewPaths = useMemo(() => (routeView ? routeStopPath(routeView, stopsById) : []), [routeView, stopsById]);
+
   // 핀 주변 반경 1km 정류장(미리보기 — 경로 후보 규칙 AC-003·AC-007은 확정 후 그대로 적용)
   const pickStops = useMemo(() => (stops && pickPreview ? findStopsWithin(stops, pickPreview, PICK_PREVIEW_RADIUS_METERS) : []), [stops, pickPreview]);
   const items = useMemo(() => {
+    if (routeView) return routeViewItems(routeView, stopsById, routeViewVehicles, routeNumber(routeView, routeView.id));
     if (pickTarget && pickPreview) return pickPreviewItems(pickPreview, pickStops, NEARBY_RADIUS_METERS);
     if (!hasPlace) return POC_ITEMS;
     const o = origin?.coordinates ?? null;
     const d = destination?.coordinates ?? null;
     return selectedPoints ? journeyMapItems(selectedPoints, o, d, selectedVia) : nearbyMapItems(nearby.state, o, d);
-  }, [pickTarget, pickPreview, pickStops, hasPlace, selectedPoints, selectedVia, nearby.state, origin, destination]);
+  }, [routeView, routeViewVehicles, stopsById, pickTarget, pickPreview, pickStops, hasPlace, selectedPoints, selectedVia, nearby.state, origin, destination]);
   const fitBounds = useMemo(
     () =>
-      pickTarget && pickPreview
+      routeView
+        ? boundsOf(routeViewPaths.flat())
+        : pickTarget && pickPreview
         ? boundsOf([pickPreview, ...pickStops.map((n) => n.stop.coordinates)])
         : hasPlace
         ? boundsOf([
@@ -150,7 +182,7 @@ export default function App() {
               : nearbyStopsOf(nearby.state).map((n) => n.stop.coordinates)),
           ])
         : null,
-    [pickTarget, pickPreview, pickStops, hasPlace, origin, destination, nearby.state, selectedPoints, selectedVia],
+    [routeView, routeViewPaths, pickTarget, pickPreview, pickStops, hasPlace, origin, destination, nearby.state, selectedPoints, selectedVia],
   );
   const selectedStop = useMemo(
     () => nearbyStopsOf(nearby.state).find((n) => n.stop.id === selectedStopId)?.stop ?? null,
@@ -271,8 +303,35 @@ export default function App() {
   }, [selectedStopId]);
 
   const resultMode = routeSearch.result !== null && !editing.origin && !editing.destination;
-  const panels = (
+  const modeTabs = (
+    <div className="mode-tabs" role="tablist" aria-label="기능 선택">
+      <button type="button" role="tab" aria-selected={mode === "trip"} onClick={() => setMode("trip")}>
+        경로 찾기
+      </button>
+      <button type="button" role="tab" aria-selected={mode === "route"} onClick={() => setMode("route")}>
+        노선 운행
+      </button>
+    </div>
+  );
+  const panels = mode === "route" ? (
     <>
+      {modeTabs}
+      <RouteStatusPanel
+        query={routeQuery}
+        onQueryChange={setRouteQuery}
+        matches={routeMatches}
+        statuses={routeStatus.statuses}
+        stopsById={stopsById}
+        selectedRouteId={routeViewId}
+        onSelectRoute={setRouteViewId}
+        onRefresh={routeStatus.refresh}
+        available={stopList.status === "ready"}
+      />
+      <DataAttribution generatedAt={stopList.status === "ready" ? stopList.generatedAt : null} />
+    </>
+  ) : (
+    <>
+      {modeTabs}
       {/* 경로를 찾은 뒤에는 출발·도착 정류장 목록을 숨기고 결과를 바로 보여 준다(TASK-035). 위쪽 요약에서 출발·도착을 누르면 다시 연다 */}
       {!resultMode && (
         <>
@@ -373,7 +432,7 @@ export default function App() {
       fitBounds={fitBounds}
       fitPadding={layout === "side" ? SIDE_MAP_PADDING : SHEET_MAP_PADDING}
       focus={selectedStop?.coordinates ?? null}
-      stopPaths={selectedPaths}
+      stopPaths={routeView ? routeViewPaths : mode === "route" ? NO_PATHS : selectedPaths}
       onMapClick={pickTarget ? handleMapClick : undefined}
       ariaLabel="제주 지도"
     />
@@ -412,7 +471,8 @@ export default function App() {
     </div>
   );
   // 연결선을 그릴 때 실제 도로 경로가 아님을 지도 위에 표기(D-33). NAVER 로고와 겹치지 않게 위쪽 오른편
-  const pathLegend = selectedPaths.length > 0 && (
+  const shownPaths = routeView ? routeViewPaths : mode === "route" ? NO_PATHS : selectedPaths;
+  const pathLegend = shownPaths.length > 0 && (
     <p className="route-legend">
       <span className="route-legend-line" aria-hidden="true" />
       정류장 순서 연결 · 실제 도로 경로 아님
@@ -437,7 +497,7 @@ export default function App() {
           </header>
           <div className="side-body">
             <ServiceNotices notices={notices} />
-            {trip(false)}
+            {mode === "trip" && trip(false)}
             {panels}
             {mapCaption}
           </div>
@@ -453,19 +513,19 @@ export default function App() {
 
   // 세로 휴대폰: 지도는 접힌 패널 위에서 끝나 NAVER 로고가 항상 보인다. 펼친 패널은 화면 전체를 덮어 지도를 일부만 보이지 않게 한다
   return (
-    <div className={`map-screen is-${sheet}`}>
+    <div className={`map-screen is-${sheet}${mode === "route" ? " is-route" : ""}`}>
       <h1 className="visually-hidden">제주 스마트 버스</h1>
       <section className="map-stage" aria-label="지도">
         {mapView}
         {pathLegend}
         {/* 지도에서 고르는 동안에는 요약 카드 자리에 안내를 띄운다(지도와 패널 사이 공간이 좁음) */}
-        {sheet !== "full" && !pickTarget && trip(true)}
+        {sheet !== "full" && !pickTarget && mode === "trip" && trip(true)}
         {pickBanner}
       </section>
       <BottomSheet snap={sheet} onSnapChange={setSheet} label="버스 정보 패널">
         <ServiceNotices notices={notices} />
         {/* 펼치면 지도 위 요약 카드가 가려지므로 패널 안에 같은 요약을 둔다 */}
-        {sheet === "full" && trip(false)}
+        {sheet === "full" && mode === "trip" && trip(false)}
         {panels}
         {mapCaption}
       </BottomSheet>
