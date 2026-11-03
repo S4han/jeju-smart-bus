@@ -356,3 +356,20 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .route-legend { position: absolute; z-index: 9; right: 12px; top: 12px; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .94); box-shadow: 0 2px 8px rgba(0, 0, 0, .12); color: var(--text-2); font-size: 12px; font-weight: 600; }
 .route-legend-line { width: 22px; height: 5px; border-radius: 3px; background: #f04452; }
 .map-screen:not(.is-side) .route-legend { top: calc(256px + env(safe-area-inset-top)); }
+
+/* 기능 선택 탭·노선 운행 현황(TASK-037) */
+.mode-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--line); }
+.mode-tabs button { flex: 1; min-height: 44px; border: 0; border-radius: 11px; background: transparent; color: var(--text-2); font: inherit; font-weight: 600; cursor: pointer; }
+.mode-tabs button[aria-selected="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.route-status input[type="search"] { width: 100%; min-height: 52px; margin-top: 8px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--fill); font: inherit; font-size: 17px; }
+.route-status-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.route-status-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.route-status-list > li > button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; border-radius: 14px; background: transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.route-status-list > li.is-selected > button { background: var(--blue-weak); }
+.route-status-vehicles { margin: 4px 0 8px; padding: 0 12px 0 56px; list-style: none; display: grid; gap: 4px; color: var(--text); font-size: 15px; }
+.route-status-vehicles small { color: var(--text-3); }
+.map-marker-bus { position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #fff; border: 2px solid var(--blue); box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }
+.map-marker-bus-icon { font-size: 16px; line-height: 1; }
+.map-marker-bus .map-marker-label { color: var(--blue); font-weight: 700; }
+.map-screen.is-route:not(.is-side) .route-legend { top: calc(12px + env(safe-area-inset-top)); }
+.route-status-head .link-button { white-space: nowrap; }

@@ -72,3 +72,25 @@ export function pickPreviewItems(pin: Coordinates, stops: ReadonlyArray<NearbySt
   ];
 }
 export const PICK_ITEM_ID = "pick";
+
+// 노선 운행 현황 지도(TASK-037, D-35): 노선 정류장(작은 점) + 운행 중 차량(🚌)을 "다음에 도착할 정류장" 위치에.
+// 차량의 실제 위치(GPS)가 아니다 — 라벨에 남은 분을 함께 적는다
+export function routeViewItems(
+  route: { stopIds: ReadonlyArray<string> },
+  stopsById: ReadonlyMap<string, { id: string; name: string; coordinates: Coordinates | null }>,
+  vehicles: ReadonlyArray<{ vehicleId: string; nextStopId: string; minutes: number }>,
+  label: string,
+): MapItem[] {
+  return [
+    ...route.stopIds.map((id, i): MapItem => {
+      const s = stopsById.get(id);
+      return { id: `rv-${i}-${id}`, title: s?.name ?? `정류장 ${id}`, coordinates: s?.coordinates ?? null, kind: "via" };
+    }),
+    ...vehicles.map((v): MapItem => ({
+      id: `bus-${v.vehicleId}`,
+      title: `${label} · ${v.minutes === 0 ? "곧 도착" : `${v.minutes}분 후 도착`}`,
+      coordinates: stopsById.get(v.nextStopId)?.coordinates ?? null,
+      kind: "bus",
+    })),
+  ];
+}
