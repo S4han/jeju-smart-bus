@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Coordinates } from "../../shared/domain";
-import { markerHtml, toMarkerInputs, type MapItem } from "./markers";
+import { labelBoxFor, markerHtml, pickVisibleLabels, toMarkerInputs, type MapItem, type MarkerInput } from "./markers";
 
 interface NaverMapProps {
   maps: typeof naver.maps | null;
@@ -27,8 +27,6 @@ interface NaverMapProps {
 
 // 이보다 멀리 축소하면 정류장 이름을 숨긴다 — 이름끼리 겹쳐 읽을 수 없게 되는 것을 막는다(TASK-024)
 export const LABEL_MIN_ZOOM = 15;
-// 경유·노선 정류장(작은 점) 이름은 한 단계 더 축소해도 보인다(노선 운행 화면 요청, TASK-038)
-export const VIA_LABEL_MIN_ZOOM = 14;
 
 const NO_PATHS: ReadonlyArray<ReadonlyArray<Coordinates>> = [];
 // 내비게이션처럼 붉은 선(사용자 요청, D-33). 마커보다 아래에 그린다
@@ -39,6 +37,7 @@ const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, focus = null, stopPaths = NO_PATHS, ariaLabel }: NaverMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<naver.maps.Map | null>(null);
+  const markersRef = useRef<Array<{ marker: naver.maps.Marker; input: MarkerInput }>>([]);
 
   useEffect(() => {
     if (!maps || !container.current || mapRef.current) return;
@@ -59,15 +58,50 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
         ...(html ? { icon: { content: html, anchor: input.kind === "origin" || input.kind === "destination" ? new maps.Point(20, 12) : input.kind === "step" ? new maps.Point(14, 14) : input.kind === "via" ? new maps.Point(7, 7) : input.kind === "pick" ? new maps.Point(16, 32) : input.kind === "bus" ? new maps.Point(14, 14) : new maps.Point(12, 12) } } : {}),
       });
       const listener = onSelect ? maps.Event.addListener(marker, "click", () => onSelect(input.id)) : null;
-      return { marker, listener };
+      return { marker, listener, input };
     });
+    markersRef.current = markers;
+    declutter();
     return () => {
+      markersRef.current = [];
       for (const { marker, listener } of markers) {
         if (listener) maps.Event.removeListener(listener);
         marker.setMap(null);
       }
     };
   }, [maps, items, selectedId, onSelect]);
+
+  // 작은 점 이름 겹침 정리(TASK-038) — 지도를 움직이거나 확대할 때마다
+  function declutter() {
+    const map = mapRef.current;
+    if (!maps || !map || typeof map.getProjection !== "function") return;
+    const projection = map.getProjection();
+    const offsetOf = (m: MarkerInput) => projection.fromCoordToOffset(new maps.LatLng(m.position.lat, m.position.lng));
+    // 🚌·단계 번호 라벨은 늘 보이므로 먼저 자리를 잡는다
+    const fixed = markersRef.current
+      .filter(({ input }) => input.kind === "bus" || input.kind === "step")
+      .map(({ input }) => {
+        const p = offsetOf(input);
+        return labelBoxFor(p.x + 8, p.y, input.title);
+      });
+    const vias = markersRef.current.filter(({ input }) => input.kind === "via");
+    const show = pickVisibleLabels(
+      vias.map(({ input }) => {
+        const p = offsetOf(input);
+        return labelBoxFor(p.x, p.y, input.title);
+      }),
+      fixed,
+    );
+    vias.forEach(({ marker }, i) => marker.getElement?.()?.classList.toggle("show-via-label", show[i]));
+  }
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!maps || !map) return;
+    const listener = maps.Event.addListener(map, "idle", declutter);
+    return () => maps.Event.removeListener(listener);
+    // declutter는 ref만 읽는다
+  }, [maps]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -120,7 +154,6 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
     if (!maps || !map || !el || typeof map.getZoom !== "function") return;
     const update = () => {
       el.classList.toggle("hide-marker-labels", map.getZoom() < LABEL_MIN_ZOOM);
-      el.classList.toggle("hide-via-labels", map.getZoom() < VIA_LABEL_MIN_ZOOM);
     };
     update();
     const listener = maps.Event.addListener(map, "zoom_changed", update);
