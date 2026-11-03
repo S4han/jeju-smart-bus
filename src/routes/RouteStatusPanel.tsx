@@ -99,6 +99,27 @@ export function RouteStatusPanel(props: RouteStatusPanelProps) {
                       ))}
                     </ol>
                   )}
+                  {selected && (
+                    <details className="route-via route-status-stops">
+                      <summary>정류장 {r.stopIds.length}곳 보기</summary>
+                      <ol>
+                        {r.stopIds.map((id, k) => {
+                          const coming = st?.status === "ok" ? st.vehicles.filter((v) => v.nextStopOrder === k + 1) : [];
+                          return (
+                            <li key={`${id}-${k}`} className={coming.length ? "has-bus" : undefined}>
+                              {stopName(id)}
+                              {coming.map((v) => (
+                                <span key={v.vehicleId} className="route-status-coming">
+                                  {" "}
+                                  🚌 {v.minutes === 0 ? "곧 도착" : `${v.minutes}분 후 도착`}
+                                </span>
+                              ))}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </details>
+                  )}
                 </li>
               );
             })}

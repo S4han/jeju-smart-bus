@@ -27,6 +27,8 @@ interface NaverMapProps {
 
 // 이보다 멀리 축소하면 정류장 이름을 숨긴다 — 이름끼리 겹쳐 읽을 수 없게 되는 것을 막는다(TASK-024)
 export const LABEL_MIN_ZOOM = 15;
+// 경유·노선 정류장(작은 점) 이름은 한 단계 더 축소해도 보인다(노선 운행 화면 요청, TASK-038)
+export const VIA_LABEL_MIN_ZOOM = 14;
 
 const NO_PATHS: ReadonlyArray<ReadonlyArray<Coordinates>> = [];
 // 내비게이션처럼 붉은 선(사용자 요청, D-33). 마커보다 아래에 그린다
@@ -116,7 +118,10 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
     const map = mapRef.current;
     const el = container.current;
     if (!maps || !map || !el || typeof map.getZoom !== "function") return;
-    const update = () => el.classList.toggle("hide-marker-labels", map.getZoom() < LABEL_MIN_ZOOM);
+    const update = () => {
+      el.classList.toggle("hide-marker-labels", map.getZoom() < LABEL_MIN_ZOOM);
+      el.classList.toggle("hide-via-labels", map.getZoom() < VIA_LABEL_MIN_ZOOM);
+    };
     update();
     const listener = maps.Event.addListener(map, "zoom_changed", update);
     return () => maps.Event.removeListener(listener);
