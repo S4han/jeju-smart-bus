@@ -32,6 +32,9 @@ const NO_PATHS: ReadonlyArray<ReadonlyArray<Coordinates>> = [];
 // 내비게이션처럼 붉은 선(사용자 요청, D-33). 마커보다 아래에 그린다
 const STOP_PATH_STYLE = { strokeColor: "#f04452", strokeWeight: 6, strokeOpacity: 0.85, strokeLineCap: "round", strokeLineJoin: "round", zIndex: 5 } as const;
 
+// 지도 아래쪽 NAVER 로고·"© NAVER Corp."·축척이 있는 띠 높이(px) — 이름 라벨을 두지 않는다
+const ATTRIBUTION_STRIP_PX = 44;
+
 const DEFAULT_PADDING = { top: 40, right: 40, bottom: 40, left: 40 };
 
 export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelect, onMapClick, fitBounds = null, fitPadding = DEFAULT_PADDING, focus = null, stopPaths = NO_PATHS, ariaLabel }: NaverMapProps) {
@@ -77,6 +80,10 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
     if (!maps || !map || typeof map.getProjection !== "function") return;
     const projection = map.getProjection();
     const offsetOf = (m: MarkerInput) => projection.fromCoordToOffset(new maps.LatLng(m.position.lat, m.position.lng));
+    // 지도 아래쪽 NAVER 로고·저작권 표시·축척 줄에는 이름을 두지 않는다(Maps 약관 — 표시를 가리지 않음)
+    const center = projection.fromCoordToOffset(map.getCenter());
+    const size = map.getSize();
+    const attribution = { x: center.x - size.width / 2, y: center.y + size.height / 2 - ATTRIBUTION_STRIP_PX, w: size.width, h: ATTRIBUTION_STRIP_PX };
     // 🚌·단계 번호 라벨은 늘 보이므로 먼저 자리를 잡는다
     const fixed = markersRef.current
       .filter(({ input }) => input.kind === "bus" || input.kind === "step")
@@ -90,7 +97,7 @@ export function NaverMap({ maps, center, zoom, items, selectedId = null, onSelec
         const p = offsetOf(input);
         return labelBoxFor(p.x, p.y, input.title);
       }),
-      fixed,
+      [attribution, ...fixed],
     );
     vias.forEach(({ marker }, i) => marker.getElement?.()?.classList.toggle("show-via-label", show[i]));
   }
