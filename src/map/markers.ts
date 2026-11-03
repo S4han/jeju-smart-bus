@@ -64,3 +64,28 @@ export function markerHtml(input: MarkerInput, selected: boolean): string | null
     return `<div class="map-marker map-marker-stop-wrap${selected ? " is-selected" : ""}${input.muted ? " is-muted" : ""}" aria-hidden="true"><div class="map-marker-stop${selected ? " is-selected" : ""}"></div>${label(input.title)}</div>`;
   return null;
 }
+
+// 작은 점(경유·노선 정류장) 이름 겹침 정리(TASK-038): 화면 좌표에서 앞 정류장부터 차례로, 이미 고른 이름·고정 표시와
+// 겹치지 않는 이름만 보인다. 어느 확대 수준에서든 일부 이름은 보이고 서로 겹치지 않는다
+export interface LabelBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+const overlaps = (a: LabelBox, b: LabelBox) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+export function labelBoxFor(x: number, y: number, title: string): LabelBox {
+  // 라벨은 점 오른쪽, 최대 2줄·8.5em(약 12px/글자)
+  const chars = Math.min(title.length, 9);
+  return { x: x + 9, y: y - 10, w: chars * 12 + 6, h: title.length > 9 ? 34 : 20 };
+}
+
+export function pickVisibleLabels(boxes: ReadonlyArray<LabelBox>, fixed: ReadonlyArray<LabelBox> = []): boolean[] {
+  const kept: LabelBox[] = [...fixed];
+  return boxes.map((b) => {
+    if (kept.some((k) => overlaps(b, k))) return false;
+    kept.push(b);
+    return true;
+  });
+}

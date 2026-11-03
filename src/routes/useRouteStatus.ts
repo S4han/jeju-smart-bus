@@ -10,6 +10,8 @@ interface RoutePredictionSource {
   getRoutePredictions(routeId: RouteId, stopId: StopId): Promise<Result<ArrivalsSnapshot>>;
 }
 
+export const ROUTE_STATUS_REFRESH_MS = 30_000;
+
 export type RouteStatus = { status: "loading" } | { status: "ok"; vehicles: RunningVehicle[]; receivedAtMs: number } | { status: "failed" };
 
 export function useRouteStatus(source: RoutePredictionSource, routes: ReadonlyArray<Route>) {
@@ -24,7 +26,8 @@ export function useRouteStatus(source: RoutePredictionSource, routes: ReadonlyAr
       return;
     }
     let active = true;
-    setStatuses(new Map(targets.map((r) => [r.id, { status: "loading" } as RouteStatus])));
+    // 새로 불러오는 동안 이전 값은 그대로 두어 깜빡이지 않게(새 노선만 "불러오는 중")
+    setStatuses((m) => new Map(targets.map((r) => [r.id, m.get(r.id) ?? ({ status: "loading" } as RouteStatus)])));
     for (const route of targets) {
       source.getRoutePredictions(route.id, route.stopIds[0]).then(
         (r) => {
@@ -45,6 +48,15 @@ export function useRouteStatus(source: RoutePredictionSource, routes: ReadonlyAr
     };
     // routes 내용은 key로 비교
   }, [source, key, tick]);
+
+  // 보는 동안 30초마다 새로 불러온다(실시간 기준 120초를 넘기지 않게, D-04). 화면이 숨겨져 있으면 쉬고, 서버 응답은 15초 CDN 캐시
+  useEffect(() => {
+    if (routes.length === 0) return;
+    const id = setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") setTick((t) => t + 1);
+    }, ROUTE_STATUS_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [routes.length]);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   return { statuses, refresh };

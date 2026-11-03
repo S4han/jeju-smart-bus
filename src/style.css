@@ -282,7 +282,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .map-marker-via-wrap { position: relative; width: 14px; height: 14px; }
 .map-marker-via { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--purple); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
 .map-marker-via-wrap .map-marker-label { font-size: 11px; font-weight: 500; color: var(--text-2); }
-.hide-marker-labels .map-marker-via-wrap .map-marker-label { display: none; }
+/* 작은 점 이름은 겹치지 않는 것만(show-via-label, TASK-038) */
+.map-marker-via-wrap .map-marker-label { visibility: hidden; }
+.show-via-label .map-marker-via-wrap .map-marker-label { visibility: visible; }
 .route-via { margin-top: 6px; }
 .route-via summary { cursor: pointer; color: var(--blue); font-size: 14px; font-weight: 600; padding: 4px 0; }
 .route-via ol { margin: 6px 0 0; padding-left: 20px; color: var(--text-2); font-size: 14px; display: grid; gap: 2px; }
@@ -373,3 +375,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .map-marker-bus .map-marker-label { color: var(--blue); font-weight: 700; }
 .map-screen.is-route:not(.is-side) .route-legend { top: calc(12px + env(safe-area-inset-top)); }
 .route-status-head .link-button { white-space: nowrap; }
+.route-status-stops { margin: 0 12px 8px 56px; }
+.route-status-stops ol { list-style: decimal; }
+.route-status-stops li.has-bus { color: var(--text); font-weight: 600; }
+.route-status-coming { color: var(--blue); font-weight: 700; }

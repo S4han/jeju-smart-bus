@@ -4,7 +4,7 @@ import type { Route } from "../../shared/domain";
 import { matchRoutes, normalizeRouteQuery, runningVehicles } from "../../src/routes/routeStatus";
 import { routeViewItems } from "../../src/stops/mapItems";
 import { routeStopPath } from "../../src/route/steps";
-import { markerHtml, toMarkerInputs } from "../../src/map/markers";
+import { labelBoxFor, markerHtml, pickVisibleLabels, toMarkerInputs } from "../../src/map/markers";
 
 const R = (id: string, name: string, number?: string): Route => ({ id, name, subName: null, type: null, ...(number ? { number } : {}), stopIds: ["A", "B", "C", "D", "E"] });
 const routes = [R("1", "254-3", "254"), R("2", "254-1", "254"), R("3", "2540"), R("4", "43-1", "43-2"), R("5", "254-10", "254")];
@@ -62,5 +62,14 @@ describe("노선 운행 지도 항목 (TASK-037)", () => {
   it("노선 연결선은 좌표 없는 정류장에서 끊는다", () => {
     const four = { ...route, stopIds: ["A", "C", "B", "A"] };
     expect(routeStopPath(four, stops).map((s) => s.length)).toEqual([2]);
+  });
+});
+
+
+describe("작은 점 이름 겹침 정리 (TASK-038)", () => {
+  it("앞 정류장부터 겹치지 않는 이름만 고르고, 고정 표시(🚌)와 겹치는 이름은 숨긴다", () => {
+    const boxes = [labelBoxFor(0, 0, "정존마을"), labelBoxFor(10, 2, "노형오거리"), labelBoxFor(0, 60, "한라병원")];
+    expect(pickVisibleLabels(boxes)).toEqual([true, false, true]);
+    expect(pickVisibleLabels(boxes, [labelBoxFor(0, 58, "253 · 1분 후 도착")])).toEqual([true, false, false]);
   });
 });
